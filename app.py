@@ -32,26 +32,26 @@ with st.form("add_form"):
     rent = st.number_input("每月固定租金", min_value=0.0)
 
     # 水費選項
-    use_fixed_water = st.checkbox("使用固定水費")
-    if use_fixed_water:
+    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"])
+    if water_mode == "每度計算":
+        water_rate = st.number_input("每度水費", min_value=0.0)
+    else:
         fixed_water = st.number_input("固定水費金額", min_value=0.0)
         water_rate = "N/A"
-    else:
-        water_rate = st.number_input("每度水費", min_value=0.0)
 
     # 電費選項
-    use_fixed_electric = st.checkbox("使用固定電費")
-    if use_fixed_electric:
+    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"])
+    if electric_mode == "每度計算":
+        electric_rate = st.number_input("每度電費", min_value=0.0)
+    else:
         fixed_electric = st.number_input("固定電費金額", min_value=0.0)
         electric_rate = "N/A"
-    else:
-        electric_rate = st.number_input("每度電費", min_value=0.0)
 
     # 新增欄位：通訊語言
     language = st.selectbox("通訊語言", ["中文", "英文"])
 
     # 新增欄位：收租費
-    management_fee = st.number_input("收租費（如有）", min_value=0.0, value=0.0)
+    management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
 
     cutoff_day = st.text_input("截數日")
     submitted = st.form_submit_button("✅ 新增")
