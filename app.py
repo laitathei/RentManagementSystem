@@ -16,18 +16,18 @@ sheet = client.open_by_key(sheet_id).sheet1
 # 讀取資料
 data = sheet.get_all_records()
 df = pd.DataFrame(data)
+df.columns = df.columns.str.strip()
+st.write("欄位清單:", df.columns.tolist())
 
 # ────────────────── 版頭 & 功能選單 ──────────────────
-st.title("🏠 租金管理系統")
-
+st.title("🏠 代收租金管理系統")
+st.subheader("📋 租客清單")
+st.dataframe(df, use_container_width=True)
 mode = st.radio(
     "請選擇操作：",
     ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪除租客資料"],
     horizontal=True
 )
-
-st.subheader("📋 租客清單")
-st.dataframe(df, use_container_width=True)
 
 # ────────────────── 新增 ──────────────────
 if mode == "➕ 新增租客資料":
@@ -78,10 +78,10 @@ elif mode == "✏️ 更改租客資料":
 
         row = df.iloc[idx]
         with st.form("edit_form"):
-            name = st.text_input("租客姓名", value=row["租客姓名"])
-            phone = st.text_input("電話", value=row["電話"])
-            address = st.text_input("單位地址", value=row["單位地址"])
-            rent = st.number_input("每月固定租金", value=float(row["每月固定租金"]))
+            name = st.text_input("租客姓名", value=row.get("租客姓名", ""))
+            phone = st.text_input("電話", value=row.get("電話", ""))
+            address = st.text_input("單位地址", value=row.get("單位地址", ""))
+            rent = st.number_input("每月固定租金", value=float(row.get("每月固定租金", 0)))
 
             # 水費
             default_water_mode = "每度計算" if isinstance(row["每度水費"], (int, float)) else "固定金額"
