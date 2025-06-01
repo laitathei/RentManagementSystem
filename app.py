@@ -55,7 +55,7 @@ with st.form("add_form"):
     # 新增欄位：收租費
     management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
 
-    cutoff_day = st.text_input("截數日")
+    cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)))
     submitted = st.form_submit_button("✅ 新增")
 
     if submitted:
