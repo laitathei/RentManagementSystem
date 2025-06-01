@@ -25,34 +25,28 @@ st.dataframe(df)
 
 # Add tenant form
 st.subheader("➕ 新增租客資料")
+water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"])
+electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"])
 with st.form("add_form"):
     name = st.text_input("租客姓名")
     phone = st.text_input("電話")
     address = st.text_input("單位地址")
     rent = st.number_input("每月固定租金", min_value=0.0)
 
-    # 水費選項
-    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"])
-    water_placeholder = st.empty()
-
+    # 水費輸入 -> 只會出現一個
     if water_mode == "每度計算":
-        # 只在容器裡放「每度水費」欄位
-        water_rate = water_placeholder.number_input("每度水費", min_value=0.0, key="water_per_unit")
-        fixed_water = None
+        water_rate = st.number_input("每度水費", min_value=0.0, key="water_per_unit")
+        fixed_water = None          # 供後續計算用
     else:
-        # 容器改放「固定水費金額」欄位
-        fixed_water = water_placeholder.number_input("固定水費金額", min_value=0.0, key="water_fixed")
+        fixed_water = st.number_input("固定水費金額", min_value=0.0, key="water_fixed")
         water_rate = "N/A"
 
-    # 電費選項
-    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"])
-    electric_placeholder = st.empty()
-
+    # 電費輸入 -> 只會出現一個
     if electric_mode == "每度計算":
-        electric_rate = electric_placeholder.number_input("每度電費", min_value=0.0, key="electric_per_unit")
+        electric_rate = st.number_input("每度電費", min_value=0.0, key="electric_per_unit")
         fixed_electric = None
     else:
-        fixed_electric = electric_placeholder.number_input("固定電費金額", min_value=0.0, key="electric_fixed")
+        fixed_electric = st.number_input("固定電費金額", min_value=0.0, key="electric_fixed")
         electric_rate = "N/A"
 
     # 新增欄位：通訊語言
