@@ -33,20 +33,26 @@ with st.form("add_form"):
 
     # 水費選項
     water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"])
+    water_placeholder = st.empty()
+
     if water_mode == "每度計算":
-        water_rate = st.number_input("每度水費", min_value=0.0, key="water_per_unit")
-        fixed_water = None  # optional: clear unused
-    elif water_mode == "固定金額":
-        fixed_water = st.number_input("固定水費金額", min_value=0.0, key="water_fixed")
+        # 只在容器裡放「每度水費」欄位
+        water_rate = water_placeholder.number_input("每度水費", min_value=0.0, key="water_per_unit")
+        fixed_water = None
+    else:
+        # 容器改放「固定水費金額」欄位
+        fixed_water = water_placeholder.number_input("固定水費金額", min_value=0.0, key="water_fixed")
         water_rate = "N/A"
 
     # 電費選項
     electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"])
+    electric_placeholder = st.empty()
+
     if electric_mode == "每度計算":
-        electric_rate = st.number_input("每度電費", min_value=0.0, key="electric_per_unit")
+        electric_rate = electric_placeholder.number_input("每度電費", min_value=0.0, key="electric_per_unit")
         fixed_electric = None
-    elif electric_mode == "固定金額":
-        fixed_electric = st.number_input("固定電費金額", min_value=0.0, key="electric_fixed")
+    else:
+        fixed_electric = electric_placeholder.number_input("固定電費金額", min_value=0.0, key="electric_fixed")
         electric_rate = "N/A"
 
     # 新增欄位：通訊語言
