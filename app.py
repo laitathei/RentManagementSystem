@@ -4,6 +4,19 @@ from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import json
 
+# ────────────────── 🔒 密碼驗證 ──────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    pw = st.text_input("🔒 請輸入密碼以登入系統：", type="password")
+    if pw == st.secrets["ADMIN_PASSWORD"]:
+        st.session_state.authenticated = True
+        st.experimental_rerun()
+    elif pw:
+        st.error("❌ 密碼錯誤，請重試。")
+    st.stop()
+
 # ────────────────── Google Sheets 認證 ──────────────────
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds_dict = json.loads(st.secrets["GOOGLE_SERVICE_ACCOUNT_JSON"])
