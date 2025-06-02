@@ -47,7 +47,7 @@ if mode in ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪�
     # 讀取資料
     tenant_data = sheet_tenants.get_all_records()
     tenant_df = pd.DataFrame(tenant_data)
-    tenant_df.columns = tenant_df.columns.str.strip()
+    # tenant_df.columns = tenant_df.columns.str.strip()
     # st.write("欄位清單:", tenant_df.columns.tolist())
     st.subheader("📋 租客資料")
     st.dataframe(tenant_df, use_container_width=True)
@@ -55,7 +55,7 @@ if mode in ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪�
 elif mode == "📆 租金處理進度":
     rentflow_data = sheet_rentflow.get_all_records()
     rentflow_df = pd.DataFrame(rentflow_data)
-    rentflow_df.columns = rentflow_df.columns.str.strip()
+    # rentflow_df.columns = rentflow_df.columns.str.strip()
     # st.write("欄位清單:", rentflow_df.columns.tolist())
     st.subheader("📋 租金流程")
     st.dataframe(rentflow_df, use_container_width=True)
