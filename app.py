@@ -77,7 +77,7 @@ if mode == "➕ 新增租客資料":
         if electric_mode == "每度計算":
             electric_fee = st.number_input("每度電費", min_value=0.0, key="electric_per_unit_add")
             fix_electric_fee = "N/A"
-        elif water_mode == "固定金額":
+        elif electric_mode == "固定金額":
             fix_electric_fee = st.number_input("固定電費金額", min_value=0.0, key="electric_fixed_add")
             electric_fee = "N/A"
         else:
