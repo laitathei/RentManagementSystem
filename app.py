@@ -53,8 +53,8 @@ mode = st.radio(
 # ────────────────── 新增 ──────────────────
 if mode == "➕ 新增租客資料":
     st.subheader("➕ 新增租客資料")
-    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"], horizontal=True)
-    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"], horizontal=True)
+    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額", "不代收"], horizontal=True)
+    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額", "不代收"], horizontal=True)
     with st.form("add_form"):
         name = st.text_input("租客姓名")
         phone = st.text_input("電話")
@@ -66,19 +66,23 @@ if mode == "➕ 新增租客資料":
         if water_mode == "每度計算":
             water_fee = st.number_input("每度水費", min_value=0.0, key="water_per_unit_add")
             fix_water_fee = "N/A"
-        else:
+        elif water_mode == "固定金額":
             fix_water_fee = st.number_input("固定水費金額", min_value=0.0, key="water_fixed_add")
             water_fee = "N/A"
+        else:
+            water_fee = fix_water_fee = "N/A"
 
         # 電費
         electric_box = st.empty()
         if electric_mode == "每度計算":
             electric_fee = st.number_input("每度電費", min_value=0.0, key="electric_per_unit_add")
             fix_electric_fee = "N/A"
-        else:
+        elif water_mode == "固定金額":
             fix_electric_fee = st.number_input("固定電費金額", min_value=0.0, key="electric_fixed_add")
             electric_fee = "N/A"
-
+        else:
+            electric_fee = fix_electric_fee = "N/A"
+        
         language = st.selectbox("通訊語言", ["中文", "英文"])
         management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
         cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)))
@@ -93,8 +97,8 @@ if mode == "➕ 新增租客資料":
 # ────────────────── 更改 ──────────────────
 elif mode == "✏️ 更改租客資料":
     st.subheader("✏️ 更改租客資料")
-    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額"], horizontal=True)
-    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額"], horizontal=True)
+    water_mode = st.radio("💧 水費收費方式", ["每度計算", "固定金額", "不代收"], horizontal=True)
+    electric_mode = st.radio("⚡ 電費收費方式", ["每度計算", "固定金額", "不代收"], horizontal=True)
     if df.empty:
         st.info("目前沒有資料可修改。")
     else:
@@ -115,19 +119,23 @@ elif mode == "✏️ 更改租客資料":
             if water_mode == "每度計算":
                 water_fee = st.number_input("每度水費", min_value=0.0, key="water_per_unit_add")
                 fix_water_fee = "N/A"
-            else:
+            elif water_mode == "固定金額":
                 fix_water_fee = st.number_input("固定水費金額", min_value=0.0, key="water_fixed_add")
                 water_fee = "N/A"
-
+            else:
+                water_fee = fix_water_fee = "N/A"
+        
             # 電費
             electric_box = st.empty()
             if electric_mode == "每度計算":
                 electric_fee = st.number_input("每度電費", min_value=0.0, key="electric_per_unit_add")
                 fix_electric_fee = "N/A"
-            else:
+            elif electric_mode == "固定金額":
                 fix_electric_fee = st.number_input("固定電費金額", min_value=0.0, key="electric_fixed_add")
                 electric_fee = "N/A"
-
+            else:
+                electric_fee = fix_electric_fee = "N/A"
+        
             language = st.selectbox("通訊語言", ["中文", "英文"],
                                     index=0 if row["通訊語言"]=="中文" else 1)
             management_fee = st.number_input("收租費", min_value=0.0, value=float(row["收租費"]))
