@@ -48,7 +48,7 @@ if mode in ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪�
     tenant_data = sheet_tenants.get_all_records()
     tenant_df = pd.DataFrame(tenant_data)
     tenant_df.columns = tenant_df.columns.str.strip()
-    st.write("欄位清單:", tenant_df.columns.tolist())
+    # st.write("欄位清單:", tenant_df.columns.tolist())
     st.subheader("📋 租客資料")
     st.dataframe(tenant_df, use_container_width=True)
 
@@ -56,7 +56,7 @@ elif mode == "📆 租金處理進度":
     rentflow_data = sheet_rentflow.get_all_records()
     rentflow_df = pd.DataFrame(rentflow_data)
     rentflow_df.columns = rentflow_df.columns.str.strip()
-    st.write("欄位清單:", rentflow_df.columns.tolist())
+    # st.write("欄位清單:", rentflow_df.columns.tolist())
     st.subheader("📋 租金流程")
     st.dataframe(rentflow_df, use_container_width=True)
 
@@ -176,44 +176,103 @@ elif mode == "🗑️ 刪除租客資料":
             st.rerun()
 
 elif mode == "📆 租金處理進度":
-    st.subheader("📆 本月租金收取／入帳狀態")
+    st.subheader("📆 租金收取／入帳狀態")
 
-    # 1. 讀取 RentFlow
     flow_df = pd.DataFrame(sheet_rentflow.get_all_records())
     flow_df.columns = flow_df.columns.str.strip()
+    flow_df["年度"]  = flow_df["年度"].astype(int)
+    flow_df["月份"]  = flow_df["月份"].astype(int)
+    st.dataframe(flow_df, use_container_width=True, height=350)
 
-    # 2. 只顯示本月資料
-    today = pd.Timestamp.today()
-    yy, mm = today.year, today.month
-    this_month = flow_df[(flow_df["年度"] == yy) & (flow_df["月份"] == mm)]
+    tenants = ["全部"] + sorted(flow_df["租客姓名"].unique().tolist())
+    sel_tenant = st.selectbox("🔍 篩選租客", tenants, index=0)
 
-    if this_month.empty:
-        st.info("📭 本月尚未建立任何租金紀錄。")
+    if sel_tenant != "全部":
+        sel_df = flow_df[flow_df["租客姓名"] == sel_tenant]
+        st.markdown(f"### {sel_tenant} 的所有紀錄")
+        st.dataframe(sel_df, use_container_width=True)
     else:
-        for i, row in this_month.reset_index(drop=True).iterrows():
-            st.markdown(f"---\n#### 👤 {row['租客姓名']}（{row['租客電話']}）")
+        sel_df = flow_df   # 之後「修改」表單仍需要用到
 
-            col1, col2 = st.columns(2)
-            # ── 收租 ──
-            with col1:
-                r_done = st.checkbox("✅ 已收租", value=row["已收取租金"], key=f"r{i}")
-                r_date = row["收取租金日期"]
-                if r_done and not r_date:
-                    r_date = today.strftime("%Y-%m-%d")
-            # ── 入帳 ──
-            with col2:
-                d_done = st.checkbox("🏦 已入帳", value=row["已存入租金"], key=f"d{i}")
-                d_date = row["存入租金日期"]
-                if d_done and not d_date:
-                    d_date = today.strftime("%Y-%m-%d")
+    st.divider()
 
-            if st.button("💾 儲存", key=f"s{i}"):
-                # 找到 Google Sheet 中的實際列號：i（0-base）+2（標題列+1）
-                row_num = i + 2
-                # 只更新 E~H 4 欄：收租日期 / 收租勾 / 入帳日期 / 入帳勾
-                sheet_rentflow.update(
-                    f"E{row_num}:H{row_num}",
-                    [[r_date, str(r_done).upper(), d_date, str(d_done).upper()]]
-                )
-                st.success("✅ 已更新")
+    # ────────────────── ➕ 新增紀錄 ──────────────────
+    st.markdown("## ➕ 新增月度紀錄（補建 / 預先建）")
+    with st.form("add_flow"):
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            add_name = st.selectbox("租客姓名", sorted(sheet_tenants.col_values(1)[1:]))  # 假設 A 欄是姓名
+        with col2:
+            add_year  = st.number_input("年度", min_value=2020, max_value=2100, value=pd.Timestamp.today().year)
+        with col3:
+            add_month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.today().month - 1)
+
+        if st.form_submit_button("✅ 新增紀錄"):
+            # 防重複：若已存在同人同年月 → 給提醒
+            dup = flow_df[
+                (flow_df["租客姓名"] == add_name) &
+                (flow_df["年度"] == add_year) &
+                (flow_df["月份"] == add_month)
+            ]
+            if not dup.empty:
+                st.warning("⚠️ 這筆月份紀錄已存在，不可重複新增。")
+            else:
+                sheet_rentflow.append_row([
+                    sheet_tenants.find(add_name).offset(0, 1).value,  # 租客電話
+                    add_name, add_year, add_month,
+                    "", False, "", False
+                ])
+                st.success("✅ 已新增！")
                 st.rerun()
+
+    st.divider()
+
+    # ────────────────── ✏️ 修改既有紀錄 ──────────────────
+    st.markdown("## ✏️ 修改租金流程紀錄")
+    # 先讓使用者選要改哪一列（用「租客｜年度-月份」當選項）
+    sel_df = sel_df.sort_values(["租客姓名", "年度", "月份"], ascending=[True, False, False])
+    display_opt = sel_df["租客姓名"] + "｜" + sel_df["年度"].astype(str) + "-" + sel_df["月份"].astype(str).str.zfill(2)
+    choice = st.selectbox("選擇要修改的紀錄", display_opt)
+
+    # 找到 Google Sheets 的實際列號
+    idx = display_opt.tolist().index(choice)
+    gs_row = sel_df.index[idx] + 2   # +2 因第 1 列標題, DataFrame index 從 0
+
+    record = sel_df.iloc[idx]
+
+    with st.form("edit_flow"):
+        c1, c2 = st.columns(2)
+
+        # —— 步驟 1：收租 —— #
+        with c1:
+            r_done = st.checkbox("✅ 已收租", value=record["已收取租金"])
+            r_date = st.date_input(
+                "收租日期",
+                value = pd.to_datetime(record["收取租金日期"]).date()
+                        if record["收取租金日期"] else pd.Timestamp.today().date(),
+                disabled = not r_done,
+                format="YYYY-MM-DD"
+            )
+
+        # —— 步驟 2：入帳 —— #
+        with c2:
+            d_done = st.checkbox("🏦 已入帳", value=record["已存入租金"])
+            d_date = st.date_input(
+                "入帳日期",
+                value = pd.to_datetime(record["存入租金日期"]).date()
+                        if record["存入租金日期"] else pd.Timestamp.today().date(),
+                disabled = not d_done,
+                format="YYYY-MM-DD"
+            )
+
+        if st.form_submit_button("💾 儲存修改"):
+            # 若 checkbox 未勾則清空日期
+            r_date_str = r_date.strftime("%Y-%m-%d") if r_done else ""
+            d_date_str = d_date.strftime("%Y-%m-%d") if d_done else ""
+
+            sheet_rentflow.update(
+                f"E{gs_row}:H{gs_row}",
+                [[r_date_str, str(r_done).upper(), d_date_str, str(d_done).upper()]]
+            )
+            st.success("✅ 已更新！")
+            st.rerun()
