@@ -4,18 +4,26 @@ from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 import json
 
-# ────────────────── 🔒 密碼驗證 ──────────────────
+# ────────────────── 🔒 密碼登入驗證 ──────────────────
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    pw = st.text_input("🔒 請輸入密碼以登入系統：", type="password")
-    if pw == st.secrets["ADMIN_PASSWORD"]:
-        st.session_state.authenticated = True
-        st.experimental_rerun()
-    elif pw:
-        st.error("❌ 密碼錯誤，請重試。")
-    st.stop()
+    st.title("🏠 代收租金管理系統")
+    st.subheader("🔐 請輸入密碼登入")
+
+    with st.form("login_form"):
+        pw = st.text_input("密碼", type="password")
+        login_btn = st.form_submit_button("🔓 登入")
+    
+        if login_btn:
+            if pw == st.secrets["ADMIN_PASSWORD"]:
+                st.session_state.authenticated = True
+                st.success("✅ 登入成功，正在載入系統...")
+                st.rerun()
+            else:
+                st.error("❌ 密碼錯誤，請再試一次。")
+    st.stop()  # ❗停止頁面，防止其他內容顯示
 
 # ────────────────── Google Sheets 認證 ──────────────────
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
@@ -80,7 +88,7 @@ if mode == "➕ 新增租客資料":
                        cutoff_day, language, management_fee]
             sheet.append_row(new_row)
             st.success(f"✅ 已新增租客：{name}")
-            st.experimental_rerun()
+            st.rerun()
 
 # ────────────────── 更改 ──────────────────
 elif mode == "✏️ 更改租客資料":
@@ -131,7 +139,7 @@ elif mode == "✏️ 更改租客資料":
                            cutoff_day, language, management_fee]
                 sheet.update(f"A{sheet_row}:I{sheet_row}", [new_row])
                 st.success("✅ 已更新！")
-                st.experimental_rerun()
+                st.rerun()
 
 # ────────────────── 刪除 ──────────────────
 elif mode == "🗑️ 刪除租客資料":
@@ -147,4 +155,4 @@ elif mode == "🗑️ 刪除租客資料":
         if st.button("⚠️ 確認刪除"):
             sheet.delete_rows(sheet_row)
             st.warning(f"已刪除：{choice}")
-            st.experimental_rerun()
+            st.rerun()
