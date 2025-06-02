@@ -171,10 +171,8 @@ elif main_mode == "📆 租金處理進度":
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
 
-        if "receive_done" not in st.session_state:
-            st.session_state.receive_done = False
-        if "deposit_done" not in st.session_state:
-            st.session_state.deposit_done = False
+        receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
+        deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
         with st.form("add_rentflow_form"):
             name = st.text_input("租客姓名")
@@ -182,15 +180,12 @@ elif main_mode == "📆 租金處理進度":
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
-            receive_done = st.checkbox("✅ 已收租", value=st.session_state.receive_done, key="receive_done")
-            if st.session_state.receive_done:
-                receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date")
+            if receive_done:
+                receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
             else:
                 receive_date = ""
-
-            deposit_done = st.checkbox("🏦 已入帳", value=st.session_state.deposit_done, key="deposit_done")
-            if st.session_state.deposit_done:
-                deposit_date = st.date_input("📅 入帳日期", value=pd.Timestamp.now().date(), key="deposit_date")
+            if deposit_done:
+                deposit_date = st.date_input("📅 入帳日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
             else:
                 deposit_date = ""
 
