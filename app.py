@@ -170,15 +170,29 @@ elif main_mode == "📆 租金處理進度":
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
+
+        if "receive_done" not in st.session_state:
+            st.session_state.receive_done = False
+        if "deposit_done" not in st.session_state:
+            st.session_state.deposit_done = False
+
         with st.form("add_rentflow_form"):
             name = st.text_input("租客姓名")
             phone = st.text_input("租客電話")
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
-            receive_done = st.checkbox("✅ 已收租")
-            receive_date = st.date_input("收租日期", value=pd.Timestamp.now().date()) if receive_done else ""
-            deposit_done = st.checkbox("🏦 已入帳")
-            deposit_date = st.date_input("入帳日期", value=pd.Timestamp.now().date()) if deposit_done else ""
+
+            receive_done = st.checkbox("✅ 已收租", value=st.session_state.receive_done, key="receive_done")
+            if st.session_state.receive_done:
+                receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date")
+            else:
+                receive_date = ""
+
+            deposit_done = st.checkbox("🏦 已入帳", value=st.session_state.deposit_done, key="deposit_done")
+            if st.session_state.deposit_done:
+                deposit_date = st.date_input("📅 入帳日期", value=pd.Timestamp.now().date(), key="deposit_date")
+            else:
+                deposit_date = ""
 
             if st.form_submit_button("✅ 新增"):
                 exists = rentflow_df[
@@ -199,6 +213,7 @@ elif main_mode == "📆 租金處理進度":
                     sheet_rentflow.append_row(row)
                     st.success("✅ 已成功新增租金紀錄")
                     st.rerun()
+
     elif sub_mode == "✏️ 更改租金紀錄":
         st.subheader("✏️ 更改租金紀錄")
         if rentflow_df.empty:
