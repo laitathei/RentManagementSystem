@@ -179,34 +179,21 @@ elif main_mode == "📆 租金處理進度":
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
         with st.form("add_rentflow_form"):
-            # selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
-            # name = st.selectbox("租客姓名", selector)
-            # phone = st.text_input("租客電話").strip().lstrip("'")
-
-            # 1️⃣ 讓使用者挑租客（含單位地址，方便辨識）
             selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
             sel_opt = st.selectbox("租客", selector)
-
-            # 2️⃣ 根據選項，自動抓該列電話
-            #    取得對應 index，再取 tenant_df.iloc[idx]["電話"]
             idx = selector.tolist().index(sel_opt)
-            default_phone = str(tenant_df.iloc[idx]["電話"]).lstrip("'").strip()
-
-            # 3️⃣ 把 phone 欄預填，並設成 disabled (唯讀)
+            default_phone = str(tenant_df.iloc[idx]["租客電話"]).lstrip("'").strip()
             phone = st.text_input("租客電話", value=default_phone, disabled=True)
             name = sel_opt.split("｜")[0]
-            
+
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
-            if receive_done:
-                receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
-            else:
-                receive_date = ""
-            if deposit_done:
-                deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-            else:
-                deposit_date = ""
+            receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
+            receive_amt  = st.number_input("💰 收租金額", min_value=0.0, disabled=not receive_done, key="receive_amt")
+
+            deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
+            deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, disabled=not deposit_done, key="deposit_amt")
 
             if st.form_submit_button("✅ 新增"):
                 exists = rentflow_df[
@@ -221,8 +208,10 @@ elif main_mode == "📆 租金處理進度":
                         phone, name, year, month,
                         str(receive_date) if receive_done else "",
                         receive_done,
+                        receive_amt  if receive_done  else "",
                         str(deposit_date) if deposit_done else "",
-                        deposit_done
+                        deposit_done,
+                        deposit_amt  if deposit_done else "",
                     ]
                     sheet_rentflow.append_row(row, value_input_option="RAW")
                     st.success("✅ 已成功新增租金紀錄")
@@ -240,26 +229,42 @@ elif main_mode == "📆 租金處理進度":
             gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
             with st.form("edit_rentflow_form"):
+                # ① 收租
                 receive_done = st.checkbox("✅ 已收租", value=row_data["已收取租金"])
-                if receive_done:
-                    r_date = row_data["收取租金日期"]
-                    receive_date = st.date_input("收租日期", value=pd.to_datetime(r_date).date() if r_date else pd.Timestamp.now().date())
-                else:
-                    receive_date = ""
+                receive_date = st.date_input(
+                    "📅 收租日期",
+                    value=pd.to_datetime(row_data["收取租金日期"]).date() if row_data["收取租金日期"] else pd.Timestamp.now().date(),
+                    disabled=not receive_done
+                )
+                receive_amt  = st.number_input(
+                    "💰 收租金額",
+                    min_value=0.0,
+                    value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0,
+                    disabled=not receive_done
+                )
 
+                # ② 入帳
                 deposit_done = st.checkbox("🏦 已入帳", value=row_data["已存入租金"])
-                if deposit_done:
-                    d_date = row_data["存入租金日期"]
-                    deposit_date = st.date_input("過數日期", value=pd.to_datetime(d_date).date() if d_date else pd.Timestamp.now().date())
-                else:
-                    deposit_date = ""
+                deposit_date = st.date_input(
+                    "📅 過數日期",
+                    value=pd.to_datetime(row_data["存入租金日期"]).date() if row_data["存入租金日期"] else pd.Timestamp.now().date(),
+                    disabled=not deposit_done
+                )
+                deposit_amt  = st.number_input(
+                    "💰 過戶金額",
+                    min_value=0.0,
+                    value=float(row_data["過戶金額"]) if row_data["過戶金額"] else 0.0,
+                    disabled=not deposit_done
+                )
 
                 if st.form_submit_button("💾 儲存修改"):
                     sheet_rentflow.update(f"E{gs_row}:H{gs_row}", [[
                         str(receive_date) if receive_done else "",
                         str(receive_done).upper(),
+                        receive_amt if receive_done else "",
                         str(deposit_date) if deposit_done else "",
-                        str(deposit_done).upper()
+                        str(deposit_done).upper(),
+                        deposit_amt if deposit_done else ""
                     ]])
                     st.success("✅ 已成功修改紀錄")
                     st.rerun()
