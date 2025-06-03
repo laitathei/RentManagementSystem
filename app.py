@@ -182,8 +182,8 @@ elif main_mode == "📆 租金處理進度":
     ]
 
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
-    tenant_df["key"]   = tenant_df["租客姓名"] + "｜" + tenant_df["租客電話"].astype(str)
-    filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["租客電話"].astype(str)
+    tenant_df["key"]   = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"].astype(str)
+    filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
 
     paid_keys = set(filtered_df.loc[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE", "key"])
 
@@ -205,8 +205,10 @@ elif main_mode == "📆 租金處理進度":
 
     if unpaid > 0:
         st.markdown("### ❌ 未交租租客名單")
-        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in unpaid_df.columns]
-        st.dataframe(unpaid_df[show_cols], use_container_width=True)
+        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
+        view_df = unpaid_df[show_cols].copy()
+        view_df = view_df.rename(columns={"每月固定租金": "應付租金"})
+        st.dataframe(view_df, use_container_width=True)
     else:
         st.success(f"🥳 所有租客都已繳交{selected_year} 年 {selected_month} 月月租金")
 
