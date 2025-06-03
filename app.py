@@ -179,9 +179,23 @@ elif main_mode == "📆 租金處理進度":
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
         with st.form("add_rentflow_form"):
-            tenant_names = sorted(set(tenant_df["租客姓名"].astype(str).str.strip()))
-            name = st.selectbox("租客姓名", tenant_names)
-            phone = st.text_input("租客電話").strip().strip("'")
+            # selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+            # name = st.selectbox("租客姓名", selector)
+            # phone = st.text_input("租客電話").strip().lstrip("'")
+
+            # 1️⃣ 讓使用者挑租客（含單位地址，方便辨識）
+            selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+            sel_opt = st.selectbox("租客", selector)
+
+            # 2️⃣ 根據選項，自動抓該列電話
+            #    取得對應 index，再取 tenant_df.iloc[idx]["電話"]
+            idx = selector.tolist().index(sel_opt)
+            default_phone = str(tenant_df.iloc[idx]["電話"]).lstrip("'").strip()
+
+            # 3️⃣ 把 phone 欄預填，並設成 disabled (唯讀)
+            phone = st.text_input("租客電話", value=default_phone, disabled=True)
+            name = sel_opt.split("｜")[0]
+            
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
@@ -210,7 +224,7 @@ elif main_mode == "📆 租金處理進度":
                         str(deposit_date) if deposit_done else "",
                         deposit_done
                     ]
-                    sheet_rentflow.append_row(row)
+                    sheet_rentflow.append_row(row, value_input_option="RAW")
                     st.success("✅ 已成功新增租金紀錄")
                     st.rerun()
 
