@@ -174,26 +174,33 @@ elif main_mode == "📆 租金處理進度":
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
-
+        
+        selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+        sel_opt = st.selectbox("租客", selector)
+        idx = selector.tolist().index(sel_opt)
+        default_phone = str(tenant_df.iloc[idx]["租客電話"]).lstrip("'").strip()
+        name = sel_opt.split("｜")[0]
         receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
         with st.form("add_rentflow_form"):
-            selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
-            sel_opt = st.selectbox("租客", selector)
-            idx = selector.tolist().index(sel_opt)
-            default_phone = str(tenant_df.iloc[idx]["租客電話"]).lstrip("'").strip()
             phone = st.text_input("租客電話", value=default_phone, disabled=True)
-            name = sel_opt.split("｜")[0]
 
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
-            receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
-            receive_amt  = st.number_input("💰 收租金額", min_value=0.0, disabled=not receive_done, key="receive_amt")
-
-            deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-            deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, disabled=not deposit_done, key="deposit_amt")
+            if receive_done:
+                receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
+                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, key="receive_amt")
+            else:
+                receive_date = ""
+                receive_amt = ""
+            if deposit_done:
+                deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
+                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, key="deposit_amt")
+            else:
+                deposit_date = ""
+                deposit_amt = ""
 
             if st.form_submit_button("✅ 新增"):
                 exists = rentflow_df[
