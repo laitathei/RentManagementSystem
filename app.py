@@ -89,10 +89,12 @@ if main_mode == "👥 租客資料管理":
             language = st.selectbox("通訊語言", ["中文", "英文"])
             management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
             cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)))
+            lease_start = st.date_input("租約開始日", key="lease_start", value=pd.Timestamp.now().date())
+            lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
             if st.form_submit_button("✅ 新增"):
                 new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee,
-                        cutoff_day, language, management_fee]
+                        cutoff_day, language, management_fee, str(lease_start), str(lease_end)]
                 sheet_tenants.append_row(new_row)
                 st.success(f"✅ 已新增租客：{name}")
                 st.rerun()
@@ -180,6 +182,8 @@ elif main_mode == "📆 租金處理進度":
         idx = selector.tolist().index(sel_opt)
         default_phone = str(tenant_df.iloc[idx]["租客電話"]).lstrip("'").strip()
         name = sel_opt.split("｜")[0]
+        default_rent = float(tenant_df.iloc[idx]["每月固定租金"])
+
         receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
@@ -191,13 +195,13 @@ elif main_mode == "📆 租金處理進度":
 
             if receive_done:
                 receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
-                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, key="receive_amt")
+                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=default_rent, key="receive_amt")
             else:
                 receive_date = ""
                 receive_amt = ""
             if deposit_done:
                 deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, key="deposit_amt")
+                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=default_rent, key="deposit_amt")
             else:
                 deposit_date = ""
                 deposit_amt = ""
