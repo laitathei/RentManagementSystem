@@ -39,10 +39,16 @@ sheet_rentflow  = client.open_by_key(sheet_id).worksheet("租金流程")  # 租�
 st.title("🏠 代收租金管理系統")
 main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租金處理進度"], horizontal=True)
 
+tenant_data = sheet_tenants.get_all_records()
+tenant_df = pd.DataFrame(tenant_data)
+rentflow_data = sheet_rentflow.get_all_records()
+rentflow_df = pd.DataFrame(rentflow_data)
+for col in ["固定水費", "固定電費", "每度水費", "每度電費"]:
+    if col in tenant_df.columns:
+        tenant_df[col] = tenant_df[col].astype(str)
+
 if main_mode == "👥 租客資料管理":
     # 讀取資料
-    tenant_data = sheet_tenants.get_all_records()
-    tenant_df = pd.DataFrame(tenant_data)
     st.subheader("📋 租客資料")
     st.dataframe(tenant_df, use_container_width=True)
     sub_mode = st.radio("📋 租客操作選項", ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪除租客資料"], horizontal=True)
@@ -163,8 +169,6 @@ if main_mode == "👥 租客資料管理":
                 st.rerun()
 
 elif main_mode == "📆 租金處理進度":
-    rentflow_data = sheet_rentflow.get_all_records()
-    rentflow_df = pd.DataFrame(rentflow_data)
     st.subheader("📋 租金流程")
     st.dataframe(rentflow_df, use_container_width=True)
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
@@ -175,8 +179,9 @@ elif main_mode == "📆 租金處理進度":
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
 
         with st.form("add_rentflow_form"):
-            name = st.text_input("租客姓名")
-            phone = st.text_input("租客電話")
+            tenant_names = sorted(set(tenant_df["租客姓名"].astype(str).str.strip()))
+            name = st.selectbox("租客姓名", tenant_names)
+            phone = st.text_input("租客電話").strip().strip("'")
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
@@ -185,7 +190,7 @@ elif main_mode == "📆 租金處理進度":
             else:
                 receive_date = ""
             if deposit_done:
-                deposit_date = st.date_input("📅 入帳日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
+                deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
             else:
                 deposit_date = ""
 
@@ -231,7 +236,7 @@ elif main_mode == "📆 租金處理進度":
                 deposit_done = st.checkbox("🏦 已入帳", value=row_data["已存入租金"])
                 if deposit_done:
                     d_date = row_data["存入租金日期"]
-                    deposit_date = st.date_input("入帳日期", value=pd.to_datetime(d_date).date() if d_date else pd.Timestamp.now().date())
+                    deposit_date = st.date_input("過數日期", value=pd.to_datetime(d_date).date() if d_date else pd.Timestamp.now().date())
                 else:
                     deposit_date = ""
 
