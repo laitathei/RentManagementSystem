@@ -182,30 +182,34 @@ elif main_mode == "📆 租金處理進度":
     ]
 
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
-    # st.subheader("📋 租金流程")
+    tenant_df["key"]   = tenant_df["租客姓名"] + "｜" + tenant_df["租客電話"].astype(str)
+    filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["租客電話"].astype(str)
 
-    total     = len(tenant_df)
-    paid      = (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE").sum()
-    unpaid    = total - paid
-    unpaid_df = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]
-    
+    paid_keys = set(filtered_df.loc[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE", "key"])
+
+    # total     = len(tenant_df)
+    # paid      = (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE").sum()
+    # unpaid    = total - paid
+    # unpaid_df = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]
+
+    total  = len(tenant_df)
+    paid   = len(paid_keys)
+    unpaid = total - paid
+    unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]    
 
     col1, col2, col3 = st.columns(3)
     col1.metric("📋 總租客數", total)
     col2.metric("✅ 已交租", paid)
     col3.metric("⚠️ 未交租", unpaid)
-
-    # 4️⃣ 顯示該月紀錄
     st.dataframe(filtered_df, use_container_width=True)
 
-    # 5️⃣ 未交租名單（如有）
     if unpaid > 0:
         st.markdown("### ❌ 未交租租客名單")
-        st.dataframe(unpaid_df[["租客姓名", "租客電話", "單位地址"]] if "單位地址" in unpaid_df.columns else unpaid_df[["租客姓名", "租客電話"]], use_container_width=True)
+        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in unpaid_df.columns]
+        st.dataframe(unpaid_df[show_cols], use_container_width=True)
     else:
-        st.success("🥳 所有租客都已繳交本月租金")
+        st.success(f"🥳 所有租客都已繳交{selected_year} 年 {selected_month} 月月租金")
 
-    # st.dataframe(rentflow_df, use_container_width=True)
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
