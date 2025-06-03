@@ -185,9 +185,10 @@ elif main_mode == "📆 租金處理進度":
     # st.subheader("📋 租金流程")
 
     total     = len(filtered_df)
-    paid      = filtered_df["已收取租金"].sum()
+    paid      = (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE").sum()
     unpaid    = total - paid
-    unpaid_df = filtered_df[filtered_df["已收取租金"] == False]
+    unpaid_df = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]
+    
 
     col1, col2, col3 = st.columns(3)
     col1.metric("📋 總租客數", total)
