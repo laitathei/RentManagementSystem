@@ -187,11 +187,6 @@ elif main_mode == "📆 租金處理進度":
 
     paid_keys = set(filtered_df.loc[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE", "key"])
 
-    # total     = len(tenant_df)
-    # paid      = (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE").sum()
-    # unpaid    = total - paid
-    # unpaid_df = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]
-
     total  = len(tenant_df)
     paid   = len(paid_keys)
     unpaid = total - paid
