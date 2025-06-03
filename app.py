@@ -171,8 +171,40 @@ if main_mode == "👥 租客資料管理":
                 st.rerun()
 
 elif main_mode == "📆 租金處理進度":
-    st.subheader("📋 租金流程")
-    st.dataframe(rentflow_df, use_container_width=True)
+    st.markdown("## 🔍 指定月份查詢")
+    years  = sorted(rentflow_df["年度"].unique(), reverse=True)
+    months = sorted(rentflow_df["月份"].unique())
+    selected_year  = st.selectbox("選擇年份", years, index=0)
+    selected_month = st.selectbox("選擇月份", months, index=len(months)-1)
+    filtered_df = rentflow_df[
+        (rentflow_df["年度"] == selected_year) &
+        (rentflow_df["月份"] == selected_month)
+    ]
+
+    st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
+    # st.subheader("📋 租金流程")
+
+    total     = len(filtered_df)
+    paid      = filtered_df["已收取租金"].sum()
+    unpaid    = total - paid
+    unpaid_df = filtered_df[filtered_df["已收取租金"] == False]
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("📋 總租客數", total)
+    col2.metric("✅ 已交租", paid)
+    col3.metric("⚠️ 未交租", unpaid)
+
+    # 4️⃣ 顯示該月紀錄
+    st.dataframe(filtered_df, use_container_width=True)
+
+    # 5️⃣ 未交租名單（如有）
+    if unpaid > 0:
+        st.markdown("### ❌ 未交租租客名單")
+        st.dataframe(unpaid_df[["租客姓名", "租客電話", "單位地址"]] if "單位地址" in unpaid_df.columns else unpaid_df[["租客姓名", "租客電話"]], use_container_width=True)
+    else:
+        st.success("🥳 所有租客都已繳交本月租金")
+
+    # st.dataframe(rentflow_df, use_container_width=True)
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
