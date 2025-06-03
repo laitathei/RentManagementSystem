@@ -184,21 +184,22 @@ elif main_mode == "📆 租金處理進度":
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
     tenant_df["key"]   = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"].astype(str)
     filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
-
-    paid_keys = set(filtered_df.loc[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE", "key"])
-
-    total  = len(tenant_df)
-    paid   = len(paid_keys)
-    unpaid = total - paid
-    unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]    
+    
+    paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
+    paid_rooms = len(paid_df)                         # ← 行數就是房間數
+    paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
+    total_rooms  = len(tenant_df)                     # 全部房間
+    unpaid_rooms = total_rooms - paid_rooms           # 未交租房間數
+    unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]
+    
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("📋 總租客數", total)
-    col2.metric("✅ 已交租", paid)
-    col3.metric("⚠️ 未交租", unpaid)
+    col1.metric("📋 總租客數", total_rooms)
+    col2.metric("✅ 已交租", paid_rooms)
+    col3.metric("⚠️ 未交租", unpaid_rooms)
     st.dataframe(filtered_df, use_container_width=True)
 
-    if unpaid > 0:
+    if unpaid_rooms > 0:
         st.markdown("### ❌ 未交租租客名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
         view_df = unpaid_df[show_cols].copy()
