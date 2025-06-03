@@ -184,7 +184,7 @@ elif main_mode == "📆 租金處理進度":
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
     # st.subheader("📋 租金流程")
 
-    total     = len(filtered_df)
+    total     = len(tenant_df)
     paid      = (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE").sum()
     unpaid    = total - paid
     unpaid_df = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]
