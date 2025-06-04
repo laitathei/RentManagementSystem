@@ -23,7 +23,7 @@ if not st.session_state.authenticated:
                 st.session_state.authenticated = True
                 st.session_state.user_name = pw2user[pw]               # 記下誰登入
                 st.success(f"✅ 歡迎 {st.session_state.user_name}！")
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error("❌ 密碼錯誤，請再試一次。")
     st.stop()  # ❗停止頁面，防止其他內容顯示
