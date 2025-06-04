@@ -47,7 +47,7 @@ tenant_data = sheet_tenants.get_all_records()
 tenant_df = pd.DataFrame(tenant_data)
 rentflow_data = sheet_rentflow.get_all_records()
 rentflow_df = pd.DataFrame(rentflow_data)
-for col in ["固定水費", "固定電費", "每度水費", "每度電費"]:
+for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
 for col in ["收租金額", "過戶金額"]:
