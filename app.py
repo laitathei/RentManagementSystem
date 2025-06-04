@@ -50,6 +50,9 @@ rentflow_df = pd.DataFrame(rentflow_data)
 for col in ["固定水費", "固定電費", "每度水費", "每度電費"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
+for col in ["收租金額", "過戶金額"]:
+    if col in rentflow_df.columns:
+        rentflow_df[col] = pd.to_numeric(rentflow_df[col], errors="coerce")
 
 if main_mode == "👥 租客資料管理":
     # 讀取資料
@@ -337,7 +340,7 @@ elif main_mode == "📆 租金處理進度":
                 if st.form_submit_button("💾 儲存修改"):
                     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
-                    sheet_rentflow.update(f"F{gs_row}:K{gs_row}", [[
+                    sheet_rentflow.update(f"F{gs_row}:M{gs_row}", [[
                         str(receive_date) if receive_done else "",
                         str(receive_done).upper(),
                         receive_amt if receive_done else "",
