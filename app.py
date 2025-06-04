@@ -209,11 +209,12 @@ if main_mode == "👥 租客資料管理":
                 st.rerun()
 
 elif main_mode == "📆 租金處理進度":
-    st.markdown("## 🔍 指定月份查詢")
-    years  = sorted(rentflow_df["年度"].unique(), reverse=True)
-    months = sorted(rentflow_df["月份"].unique())
-    selected_year  = st.selectbox("選擇年份", years, index=0)
-    selected_month = st.selectbox("選擇月份", months, index=len(months)-1)
+    st.markdown("### 🔍 指定月份查詢")
+    now = datetime.now()
+    all_years  = sorted(set(rentflow_df["年度"].unique().tolist() + [now.year]), reverse=True)
+    all_months = sorted(set(rentflow_df["月份"].unique().tolist() + [now.month]))
+    selected_year  = st.selectbox("選擇年份", all_years, index=0)
+    selected_month = st.selectbox("選擇月份", all_months, index=all_months.index(now.month))
     filtered_df = rentflow_df[
         (rentflow_df["年度"] == selected_year) &
         (rentflow_df["月份"] == selected_month)
@@ -235,7 +236,7 @@ elif main_mode == "📆 租金處理進度":
     col1.metric("📋 總租客數", total_rooms)
     col2.metric("✅ 已交租", paid_rooms)
     col3.metric("⚠️ 未交租", unpaid_rooms)
-    st.dataframe(filtered_df, use_container_width=True)
+    st.dataframe(filtered_df.drop(columns=["key"]), use_container_width=True)
 
     if unpaid_rooms > 0:
         st.markdown("### ❌ 未交租租客名單")
