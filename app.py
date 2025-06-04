@@ -190,6 +190,9 @@ if main_mode == "👥 租客資料管理":
                 management_fee = st.number_input("收租費", min_value=0.0, value=float(row["收租費"]))
                 cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)),
                                         index=int(row["截數日"])-1)
+                
+                lease_start = st.date_input("租約開始日", value=pd.to_datetime(row["租約開始日"]) if "租約開始日" in row and row["租約開始日"] else pd.Timestamp.now().date())
+                lease_end   = st.date_input("租約結束日", value=pd.to_datetime(row["租約結束日"]) if "租約結束日" in row and row["租約結束日"] else pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
                 if st.form_submit_button("💾 儲存修改"):
                     ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -198,6 +201,7 @@ if main_mode == "👥 租客資料管理":
                                fix_water_fee, fix_electric_fee, 
                                water_fee, electric_fee,
                                cutoff_day, language, management_fee,
+                               str(lease_start), str(lease_end),
                                ts, who]
                     sheet_tenants.update(f"A{sheet_row}:M{sheet_row}", [new_row])
                     st.success("✅ 已更新！")
