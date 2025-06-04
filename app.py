@@ -203,7 +203,7 @@ if main_mode == "👥 租客資料管理":
                                cutoff_day, language, management_fee,
                                str(lease_start), str(lease_end),
                                ts, who]
-                    sheet_tenants.update(f"A{sheet_row}:M{sheet_row}", [new_row])
+                    sheet_tenants.update(f"A{sheet_row}:O{sheet_row}", [new_row])
                     st.success("✅ 已更新！")
                     st.rerun()
 
