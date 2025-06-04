@@ -93,11 +93,18 @@ if main_mode == "👥 租客資料管理":
             lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
             if st.form_submit_button("✅ 新增"):
-                new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee,
-                        cutoff_day, language, management_fee, str(lease_start), str(lease_end)]
-                sheet_tenants.append_row(new_row)
-                st.success(f"✅ 已新增租客：{name}")
-                st.rerun()
+                exists = rentflow_df[
+                    (tenant_df["租客姓名"] == name.strip()) &
+                    (tenant_df["單位地址"] == address.strip())
+                ]
+                if not exists.empty:
+                    st.warning("⚠️ 已存在相同租客姓名與單位地址的紀錄，請確認是否重覆輸入。")
+                else:
+                    new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee,
+                            cutoff_day, language, management_fee, str(lease_start), str(lease_end)]
+                    sheet_tenants.append_row(new_row)
+                    st.success(f"✅ 已新增租客：{name}")
+                    st.rerun()
 
     # ────────────────── 更改 ──────────────────
     elif sub_mode == "✏️ 更改租客資料":
@@ -134,10 +141,6 @@ if main_mode == "👥 租客資料管理":
         
             row = tenant_df.iloc[idx]
             with st.form("edit_tenant_form"):
-                # name = st.text_input("租客姓名", value=row.get("租客姓名", ""))
-                # phone = st.text_input("電話", value=row.get("電話", ""))
-                # address = st.text_input("單位地址", value=row.get("單位地址", ""))
-                # rent = st.number_input("每月固定租金", value=float(row.get("每月固定租金", 0)))
                 name    = st.text_input("租客姓名",  value=row["租客姓名"])
                 phone   = st.text_input("電話",      value=str(row["租客電話"]))
                 address = st.text_input("單位地址",  value=row["單位地址"])
@@ -275,7 +278,7 @@ elif main_mode == "📆 租金處理進度":
                     (rentflow_df["月份"] == month)
                 ]
                 if not exists.empty:
-                    st.warning("⚠️ 此租客該月份的紀錄已存在！")
+                    st.warning(f"⚠️ 此租客{selected_year} 年 {selected_month} 月的租金流程紀錄已存在！")
                 else:
                     row = [
                         phone, name, address, year, month,
