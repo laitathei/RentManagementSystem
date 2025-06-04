@@ -3,7 +3,7 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
 from datetime import datetime
-import json
+import pytz
 
 # ────────────────── 🔒 密碼登入驗證 ──────────────────
 if "authenticated" not in st.session_state:
@@ -100,7 +100,8 @@ if main_mode == "👥 租客資料管理":
             lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
             if st.form_submit_button("✅ 新增"):
-                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                tz_hk = pytz.timezone("Asia/Hong_Kong")
+                ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                 who = st.session_state.get("user_name", "unknown")
                 exists = rentflow_df[
                     (tenant_df["租客姓名"] == name.strip()) &
@@ -195,7 +196,8 @@ if main_mode == "👥 租客資料管理":
                 lease_end   = st.date_input("租約結束日", value=pd.to_datetime(row["租約結束日"]) if "租約結束日" in row and row["租約結束日"] else pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
                 if st.form_submit_button("💾 儲存修改"):
-                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    tz_hk = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
                     new_row = [name, phone, address, rent, 
                                fix_water_fee, fix_electric_fee, 
@@ -297,7 +299,8 @@ elif main_mode == "📆 租金處理進度":
                 deposit_amt = ""
 
             if st.form_submit_button("✅ 新增"):
-                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                tz_hk = pytz.timezone("Asia/Hong_Kong")
+                ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                 who = st.session_state.get("user_name", "unknown")
                 exists = rentflow_df[
                     (rentflow_df["租客姓名"] == name) &
@@ -350,7 +353,8 @@ elif main_mode == "📆 租金處理進度":
                     deposit_amt = ""
 
                 if st.form_submit_button("💾 儲存修改"):
-                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    tz_hk = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
                     sheet_rentflow.update(f"F{gs_row}:M{gs_row}", [[
                         str(receive_date) if receive_done else "",
