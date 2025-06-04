@@ -158,10 +158,14 @@ if main_mode == "👥 租客資料管理":
                 # 水費
                 water_box = st.empty()
                 if water_mode == "每度計算":
-                    water_fee = st.number_input("每度水費", min_value=0.0, value=float(row["每度水費"] or 0), key="water_per_unit_add")
+                    water_fee = st.number_input("每度水費", min_value=0.0, 
+                                                value=float(row["每度水費"]) if str(row["每度水費"]).replace('.', '', 1).isdigit() else 0.0,
+                                                key="water_per_unit_add")
                     fix_water_fee = "N/A"
                 elif water_mode == "固定金額":
-                    fix_water_fee = st.number_input("固定水費金額", min_value=0.0, value=float(row["固定水費"] or 0), key="water_fixed_add")
+                    fix_water_fee = st.number_input("固定水費金額", min_value=0.0, 
+                                                    value=float(row["固定水費"]) if str(row["固定水費"]).replace('.', '', 1).isdigit() else 0.0,
+                                                    key="water_fixed_add")
                     water_fee = "N/A"
                 else:
                     water_fee = fix_water_fee = "N/A"
@@ -169,10 +173,14 @@ if main_mode == "👥 租客資料管理":
                 # 電費
                 electric_box = st.empty()
                 if electric_mode == "每度計算":
-                    electric_fee = st.number_input("每度電費", min_value=0.0, value=float(row["每度電費"] or 0), key="electric_per_unit_add")
+                    electric_fee = st.number_input("每度電費", min_value=0.0, 
+                                                   value=float(row["每度電費"]) if str(row["每度電費"]).replace('.', '', 1).isdigit() else 0.0,
+                                                   key="electric_per_unit_add")
                     fix_electric_fee = "N/A"
                 elif electric_mode == "固定金額":
-                    fix_electric_fee = st.number_input("固定電費金額", min_value=0.0, value=float(row["固定電費"] or 0), key="electric_fixed_add")
+                    fix_electric_fee = st.number_input("固定電費金額", min_value=0.0, 
+                                                       value=float(row["固定電費"]) if str(row["固定電費"]).replace('.', '', 1).isdigit() else 0.0,
+                                                       key="electric_fixed_add")
                     electric_fee = "N/A"
                 else:
                     electric_fee = fix_electric_fee = "N/A"
