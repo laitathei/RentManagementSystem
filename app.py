@@ -2,11 +2,13 @@ import streamlit as st
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import pandas as pd
+from datetime import datetime
 import json
 
 # ────────────────── 🔒 密碼登入驗證 ──────────────────
 if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
+    st.session_state.user_name = ""
 
 if not st.session_state.authenticated:
     st.title("🏠 代收租金管理系統")
@@ -15,12 +17,13 @@ if not st.session_state.authenticated:
     with st.form("login_form"):
         pw = st.text_input("密碼", type="password")
         login_btn = st.form_submit_button("🔓 登入")
-    
         if login_btn:
-            if pw == st.secrets["ADMIN_PASSWORD"]:
+            pw2user = {v: k for k, v in st.secrets["USERS"].items()}   # 反轉成 {密碼:名字}
+            if pw in pw2user:
                 st.session_state.authenticated = True
-                st.success("✅ 登入成功，正在載入系統...")
-                st.rerun()
+                st.session_state.user_name = pw2user[pw]               # 記下誰登入
+                st.success(f"✅ 歡迎 {st.session_state.user_name}！")
+                st.experimental_rerun()
             else:
                 st.error("❌ 密碼錯誤，請再試一次。")
     st.stop()  # ❗停止頁面，防止其他內容顯示
@@ -93,6 +96,8 @@ if main_mode == "👥 租客資料管理":
             lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=1))
 
             if st.form_submit_button("✅ 新增"):
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                who = st.session_state.get("user_name", "unknown")
                 exists = rentflow_df[
                     (tenant_df["租客姓名"] == name.strip()) &
                     (tenant_df["單位地址"] == address.strip())
@@ -101,7 +106,7 @@ if main_mode == "👥 租客資料管理":
                     st.warning("⚠️ 已存在相同租客姓名與單位地址的紀錄，請確認是否重覆輸入。")
                 else:
                     new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee,
-                            cutoff_day, language, management_fee, str(lease_start), str(lease_end)]
+                            cutoff_day, language, management_fee, str(lease_start), str(lease_end), ts, who]
                     sheet_tenants.append_row(new_row)
                     st.success(f"✅ 已新增租客：{name}")
                     st.rerun()
@@ -175,10 +180,13 @@ if main_mode == "👥 租客資料管理":
                                         index=int(row["截數日"])-1)
 
                 if st.form_submit_button("💾 儲存修改"):
+                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    who = st.session_state.get("user_name", "unknown")
                     new_row = [name, phone, address, rent, 
                                fix_water_fee, fix_electric_fee, 
                                water_fee, electric_fee,
-                               cutoff_day, language, management_fee]
+                               cutoff_day, language, management_fee,
+                               ts, who]
                     sheet_tenants.update(f"A{sheet_row}:I{sheet_row}", [new_row])
                     st.success("✅ 已更新！")
                     st.rerun()
@@ -272,6 +280,8 @@ elif main_mode == "📆 租金處理進度":
                 deposit_amt = ""
 
             if st.form_submit_button("✅ 新增"):
+                ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                who = st.session_state.get("user_name", "unknown")
                 exists = rentflow_df[
                     (rentflow_df["租客姓名"] == name) &
                     (rentflow_df["年度"] == year) &
@@ -288,6 +298,7 @@ elif main_mode == "📆 租金處理進度":
                         str(deposit_date) if deposit_done else "",
                         deposit_done,
                         deposit_amt  if deposit_done else "",
+                        ts, who
                     ]
                     sheet_rentflow.append_row(row, value_input_option="RAW")
                     st.success("✅ 已成功新增租金紀錄")
@@ -322,13 +333,16 @@ elif main_mode == "📆 租金處理進度":
                     deposit_amt = ""
 
                 if st.form_submit_button("💾 儲存修改"):
+                    ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                    who = st.session_state.get("user_name", "unknown")
                     sheet_rentflow.update(f"F{gs_row}:K{gs_row}", [[
                         str(receive_date) if receive_done else "",
                         str(receive_done).upper(),
                         receive_amt if receive_done else "",
                         str(deposit_date) if deposit_done else "",
                         str(deposit_done).upper(),
-                        deposit_amt if deposit_done else ""
+                        deposit_amt if deposit_done else "",
+                        ts, who
                     ]])
                     st.success("✅ 已成功修改紀錄")
                     st.rerun()
