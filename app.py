@@ -347,7 +347,7 @@ elif main_mode == "📆 租金處理進度":
                     receive_amt = ""
                 if deposit_done:
                     deposit_date = st.date_input("📅 過數日期", value=pd.to_datetime(row_data["存入租金日期"]).date() if row_data["存入租金日期"] else pd.Timestamp.now().date(), key="deposit_date_in")
-                    deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=float(row_data["過戶金額"]) if row_data["過戶金額"] else 0.0, key="deposit_amt")
+                    deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="deposit_amt") # 理論上收租金額=過戶金額
                 else:
                     deposit_date = ""
                     deposit_amt = ""
