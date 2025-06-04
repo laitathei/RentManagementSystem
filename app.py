@@ -199,7 +199,7 @@ if main_mode == "👥 租客資料管理":
                                water_fee, electric_fee,
                                cutoff_day, language, management_fee,
                                ts, who]
-                    sheet_tenants.update(f"A{sheet_row}:I{sheet_row}", [new_row])
+                    sheet_tenants.update(f"A{sheet_row}:M{sheet_row}", [new_row])
                     st.success("✅ 已更新！")
                     st.rerun()
 
