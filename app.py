@@ -387,7 +387,7 @@ elif main_mode == "🏢 租賃盤源管理":
         filtered_listing = listing_df
     else:
         filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
-    st.write(f"共找到 {len(filtered_listing)}個{layout_selected}盤源")
+    st.write(f"共找到{len(filtered_listing)}個{layout_selected}盤源")
     st.markdown(f"### 🏢 {layout_selected}盤源一覽")
     st.dataframe(filtered_listing, use_container_width=True)
 
