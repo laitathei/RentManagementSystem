@@ -11,7 +11,7 @@ if "authenticated" not in st.session_state:
     st.session_state.user_name = ""
 
 if not st.session_state.authenticated:
-    st.title("🏠 代收租金管理系統")
+    st.title("🏠 公司管理系統")
     st.subheader("🔐 請輸入密碼登入")
 
     with st.form("login_form"):
@@ -38,22 +38,28 @@ client = gspread.authorize(creds)
 sheet_id = "1k4EPnA9cLXkaDWpJ7EJwIwKpXWoth9mOMlHbNsFs644"
 sheet_tenants   = client.open_by_key(sheet_id).worksheet("租客資料")  # 租客資料表
 sheet_rentflow  = client.open_by_key(sheet_id).worksheet("租金流程")  # 租金流程表
+sheet_listings  = client.open_by_key(sheet_id).worksheet("租賃盤源")  # 租金流程表
 
 # ────────────────── 版頭 & 功能選單 ──────────────────
 st.title("🏠 代收租金管理系統")
-main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租金處理進度"], horizontal=True)
+main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租金處理進度", "🏢 租賃盤源管理"], horizontal=True)
 
 tenant_data = sheet_tenants.get_all_records()
 tenant_df = pd.DataFrame(tenant_data)
 rentflow_data = sheet_rentflow.get_all_records()
 rentflow_df = pd.DataFrame(rentflow_data)
+listing_data = sheet_listings.get_all_records()
+listing_df   = pd.DataFrame(listing_data)
 for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
 for col in ["收租金額", "過戶金額"]:
     if col in rentflow_df.columns:
         rentflow_df[col] = pd.to_numeric(rentflow_df[col], errors="coerce")
-
+for col in ["建築面積", "租金要求"]:
+    if col in listing_df.columns:
+        listing_df[col] = pd.to_numeric(listing_df[col], errors="coerce")
+        
 if main_mode == "👥 租客資料管理":
     # 讀取資料
     st.subheader("📋 租客資料")
@@ -97,7 +103,7 @@ if main_mode == "👥 租客資料管理":
             management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
             cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)))
             lease_start = st.date_input("租約開始日", key="lease_start", value=pd.Timestamp.now().date())
-            lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=1))
+            lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=2))
 
             if st.form_submit_button("✅ 新增"):
                 tz_hk = pytz.timezone("Asia/Hong_Kong")
@@ -193,7 +199,7 @@ if main_mode == "👥 租客資料管理":
                                         index=int(row["截數日"])-1)
                 
                 lease_start = st.date_input("租約開始日", value=pd.to_datetime(row["租約開始日"]) if "租約開始日" in row and row["租約開始日"] else pd.Timestamp.now().date())
-                lease_end   = st.date_input("租約結束日", value=pd.to_datetime(row["租約結束日"]) if "租約結束日" in row and row["租約結束日"] else pd.Timestamp.now().date() + pd.DateOffset(years=1))
+                lease_end   = st.date_input("租約結束日", value=pd.to_datetime(row["租約結束日"]) if "租約結束日" in row and row["租約結束日"] else pd.Timestamp.now().date() + pd.DateOffset(years=2))
 
                 if st.form_submit_button("💾 儲存修改"):
                     tz_hk = pytz.timezone("Asia/Hong_Kong")
@@ -367,3 +373,94 @@ elif main_mode == "📆 租金處理進度":
                     ]])
                     st.success("✅ 已成功修改紀錄")
                     st.rerun()
+
+elif main_mode == "🏢 租賃盤源管理":
+    st.subheader("🏢 盤源一覽")
+    st.dataframe(listing_df, use_container_width=True)
+    sub_mode = st.radio("📋 盤源操作選項", ["➕ 新增盤源", "✏️ 更改盤源", "🗑️ 刪除盤源"], horizontal=True)
+    if sub_mode == "➕ 新增盤源":
+        with st.form("add_listing_form"):
+            address   = st.text_input("🏠 物業地址")
+            unit_type = st.selectbox("🏢 單位類型", ["劏房", "分契樓", "獨立單位"])
+            layout    = st.selectbox("🛏️ 間隔", ["開放式", "套房", "一房一廳", "兩房一廳", "三房一廳"])
+            gross     = st.number_input("📏 建築面積 (呎)", min_value=0.0)
+            rent_amt  = st.number_input("💰 租金要求 (HKD)", min_value=0.0)
+            bld_type  = st.selectbox("🏗️ 物業類型", ["唐樓", "居屋", "洋樓"])
+            src_type  = st.selectbox("📌 盤源權限", ["獨家", "合作", "自己盤"])
+            owner     = st.text_input("👤 業主姓名")
+            owner_tel = st.text_input("📱 業主電話")
+            nation    = st.selectbox("🌏 預期租客國籍", ["中國", "無限制", "外國"])
+            max_occ   = st.number_input("👥 最多入住人數", min_value=1, step=1, value=1)
+            remark    = st.text_area("📝 備註")
+            date      = st.date_input("📅 上架日期", value=pd.Timestamp.now().date())
+
+            if st.form_submit_button("✅ 新增"):
+                dup = listing_df[(listing_df["物業地址"] == address.strip())]
+                if not dup.empty:
+                    st.warning("⚠️ 此地址已存在盤源，請確認是否重覆。")
+                else:
+                    tz = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                    who = st.session_state.get("user_name", "unknown")
+                    sheet_listings.append_row([
+                        address, unit_type, layout, gross, rent_amt, bld_type,
+                        src_type, owner, owner_tel, nation, 
+                        max_occ if max_occ else "N/A", remark, date, ts, who
+                    ])
+                    st.success("✅ 盤源已新增")
+                    st.rerun()
+
+    # ─────────────── ➋ 更改盤源 ───────────────
+    elif sub_mode == "✏️ 更改盤源":
+        if listing_df.empty():
+            st.info("目前沒有盤源可修改。")
+        else:
+            selector = listing_df["物業地址"]
+            choice   = st.selectbox("選擇盤源", selector)
+            idx      = selector.tolist().index(choice)
+            sheet_row = idx + 2
+            row      = listing_df.iloc[idx]
+
+            with st.form("edit_listing_form"):
+                address   = st.text_input("🏠 物業地址", row["物業地址"])
+                unit_type = st.selectbox("🏢 單位類型", ["劏房", "分契樓", "獨立單位"], index=["劏房", "分契樓", "獨立單位"].index(row["單位類型"]))
+                layout    = st.selectbox("🛏️ 間隔", ["開放式", "套房", "一房一廳", "兩房一廳", "三房一廳"], index=["開放式", "套房", "一房一廳", "兩房一廳", "三房一廳"].index(row["間隔"]))
+                gross     = st.number_input("📏 建築面積 (呎)", min_value=0.0, value=float(row["建築面積(呎)"]))
+                rent_amt  = st.number_input("💰 租金要求 (HKD)", min_value=0.0, value=float(row["租金要求"]))
+                bld_type  = st.selectbox("🏗️ 物業類型", ["唐樓", "居屋", "洋樓"],
+                                         index=["唐樓", "居屋", "洋樓"].index(row["物業類型"]))
+                src_type  = st.selectbox("📌 盤源權限", ["獨家", "合作", "自己盤"],
+                                         index=["獨家", "合作", "自己盤"].index(row["盤源權限"]))
+                owner     = st.text_input("👤 業主姓名", row["業主姓名"])
+                owner_tel = st.text_input("📱 業主電話", row["業主電話"])
+                nation    = st.text_input("🌏 預期租客國籍", row["預期租客國籍"])
+                max_occ   = st.number_input("👥 最多入住人數", min_value=1, step=1, value=1 if str(row["最多入住人數"])=="N/A" else int(row["最多入住人數"]))
+                remark    = st.text_area("📝 備註", row["備註"])
+
+                if st.form_submit_button("💾 儲存修改"):
+                    tz = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                    who = st.session_state.get("user_name", "unknown")
+                    sheet_listings.update(
+                        f"A{sheet_row}:O{sheet_row}",
+                        [[address, unit_type, layout, gross, rent_amt, bld_type, 
+                          src_type, owner, owner_tel, nation,
+                          max_occ if max_occ else "N/A", remark, row["上架日期"], ts, who]]
+                    )
+                    st.success("✅ 已成功更改盤源")
+                    st.rerun()
+
+
+    # ─────────────── ➌ 刪除盤源 ───────────────
+    elif sub_mode == "🗑️ 刪除盤源":
+        if listing_df.empty():
+            st.info("目前沒有盤源可刪除。")
+        else:
+            selector = listing_df["物業地址"]
+            choice   = st.selectbox("選擇盤源", selector)
+            idx      = selector.tolist().index(choice)
+            sheet_row = idx + 2
+            if st.button("⚠️ 確認刪除"):
+                sheet_listings.delete_rows(sheet_row)
+                st.warning(f"已刪除：{choice}")
+                st.rerun()
