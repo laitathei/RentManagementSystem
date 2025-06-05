@@ -41,7 +41,7 @@ sheet_rentflow  = client.open_by_key(sheet_id).worksheet("租金流程")  # 租�
 sheet_listings  = client.open_by_key(sheet_id).worksheet("租賃盤源")  # 租金流程表
 
 # ────────────────── 版頭 & 功能選單 ──────────────────
-st.title("🏠 代收租金管理系統")
+st.title("🏠 公司管理系統")
 main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租金處理進度", "🏢 租賃盤源管理"], horizontal=True)
 
 tenant_data   = sheet_tenants.get_all_records()
@@ -419,7 +419,7 @@ elif main_mode == "🏢 租賃盤源管理":
                     sheet_listings.append_row([
                         address, unit_type, layout, gross, rent_amt, bld_type,
                         src_type, owner, owner_tel, nation, 
-                        max_occ, remark, date, ts, who
+                        max_occ, remark, date.strftime("%Y-%m-%d"), ts, who
                     ], value_input_option="RAW")
                     st.success("✅ 盤源已新增")
                     st.rerun()
