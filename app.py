@@ -59,7 +59,10 @@ for col in ["收租金額", "過戶金額"]:
 for col in ["建築面積", "租金要求"]:
     if col in listing_df.columns:
         listing_df[col] = pd.to_numeric(listing_df[col], errors="coerce")
-        
+for col in ["業主電話", "最多入住人數"]:
+    if col in listing_df.columns:
+        listing_df[col] = listing_df[col].astype(str)
+
 if main_mode == "👥 租客資料管理":
     # 讀取資料
     st.subheader("📋 租客資料")
@@ -375,8 +378,15 @@ elif main_mode == "📆 租金處理進度":
                     st.rerun()
 
 elif main_mode == "🏢 租賃盤源管理":
-    st.subheader("🏢 盤源一覽")
-    st.dataframe(listing_df, use_container_width=True)
+    st.markdown("### 🔍 查詢間隔類型的盤源")
+    layout_options = sorted(listing_df["間隔"].dropna().unique())
+    layout_selected = st.selectbox("📐 選擇間隔類型", layout_options)
+
+    filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
+    st.write(f"共找到 {len(filtered_listing)}個{layout_selected}盤源")
+    st.markdown(f"### 🏢 {layout_selected}盤源一覽")
+    st.dataframe(filtered_listing, use_container_width=True)
+
     sub_mode = st.radio("📋 盤源操作選項", ["➕ 新增盤源", "✏️ 更改盤源", "🗑️ 刪除盤源"], horizontal=True)
     if sub_mode == "➕ 新增盤源":
         with st.form("add_listing_form"):
@@ -399,14 +409,14 @@ elif main_mode == "🏢 租賃盤源管理":
                 if not dup.empty:
                     st.warning("⚠️ 此地址已存在盤源，請確認是否重覆。")
                 else:
-                    tz = pytz.timezone("Asia/Hong_Kong")
-                    ts = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                    tz_hk = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
                     sheet_listings.append_row([
                         address, unit_type, layout, gross, rent_amt, bld_type,
                         src_type, owner, owner_tel, nation, 
                         max_occ if max_occ else "N/A", remark, date, ts, who
-                    ])
+                    ], value_input_option="RAW")
                     st.success("✅ 盤源已新增")
                     st.rerun()
 
@@ -438,14 +448,14 @@ elif main_mode == "🏢 租賃盤源管理":
                 remark    = st.text_area("📝 備註", row["備註"])
 
                 if st.form_submit_button("💾 儲存修改"):
-                    tz = pytz.timezone("Asia/Hong_Kong")
-                    ts = datetime.now(tz).strftime("%Y-%m-%d %H:%M:%S")
+                    tz_hk = pytz.timezone("Asia/Hong_Kong")
+                    ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
                     sheet_listings.update(
                         f"A{sheet_row}:O{sheet_row}",
                         [[address, unit_type, layout, gross, rent_amt, bld_type, 
                           src_type, owner, owner_tel, nation,
-                          max_occ if max_occ else "N/A", remark, row["上架日期"], ts, who]]
+                          max_occ if max_occ else "N/A", remark, row["上架日期"], ts, who]], value_input_option="RAW"
                     )
                     st.success("✅ 已成功更改盤源")
                     st.rerun()
