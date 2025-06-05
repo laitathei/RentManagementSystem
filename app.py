@@ -44,12 +44,12 @@ sheet_listings  = client.open_by_key(sheet_id).worksheet("租賃盤源")  # 租�
 st.title("🏠 代收租金管理系統")
 main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租金處理進度", "🏢 租賃盤源管理"], horizontal=True)
 
-tenant_data = sheet_tenants.get_all_records()
-tenant_df = pd.DataFrame(tenant_data)
+tenant_data   = sheet_tenants.get_all_records()
+tenant_df     = pd.DataFrame(tenant_data)
 rentflow_data = sheet_rentflow.get_all_records()
-rentflow_df = pd.DataFrame(rentflow_data)
-listing_data = sheet_listings.get_all_records()
-listing_df   = pd.DataFrame(listing_data)
+rentflow_df   = pd.DataFrame(rentflow_data)
+listing_data  = sheet_listings.get_all_records()
+listing_df    = pd.DataFrame(listing_data)
 for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
@@ -380,6 +380,7 @@ elif main_mode == "📆 租金處理進度":
 elif main_mode == "🏢 租賃盤源管理":
     st.markdown("### 🔍 查詢間隔類型的盤源")
     layout_options = sorted(listing_df["間隔"].dropna().unique())
+    layout_options.insert(0, "所有類型")  # 插入「全部」在最前面
     layout_selected = st.selectbox("📐 選擇間隔類型", layout_options)
 
     filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
@@ -455,7 +456,7 @@ elif main_mode == "🏢 租賃盤源管理":
                         f"A{sheet_row}:O{sheet_row}",
                         [[address, unit_type, layout, gross, rent_amt, bld_type, 
                           src_type, owner, owner_tel, nation,
-                          max_occ if max_occ else "N/A", remark, row["上架日期"], ts, who]], value_input_option="RAW"
+                          max_occ if max_occ else "N/A", remark, str(row["上架日期"]), ts, who]], value_input_option="RAW"
                     )
                     st.success("✅ 已成功更改盤源")
                     st.rerun()
