@@ -59,7 +59,7 @@ for col in ["收租金額", "過戶金額"]:
 for col in ["建築面積", "租金要求"]:
     if col in listing_df.columns:
         listing_df[col] = pd.to_numeric(listing_df[col], errors="coerce")
-for col in ["業主電話", "最多入住人數"]:
+for col in ["最多入住人數", "最多人數限制", "業主電話"]:
     if col in listing_df.columns:
         listing_df[col] = listing_df[col].astype(str)
 
@@ -383,7 +383,10 @@ elif main_mode == "🏢 租賃盤源管理":
     layout_options.insert(0, "所有類型")  # 插入「全部」在最前面
     layout_selected = st.selectbox("📐 選擇間隔類型", layout_options)
 
-    filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
+    if layout_selected == "所有類型":
+        filtered_listing = listing_df
+    else:
+        filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
     st.write(f"共找到 {len(filtered_listing)}個{layout_selected}盤源")
     st.markdown(f"### 🏢 {layout_selected}盤源一覽")
     st.dataframe(filtered_listing, use_container_width=True)
@@ -416,7 +419,7 @@ elif main_mode == "🏢 租賃盤源管理":
                     sheet_listings.append_row([
                         address, unit_type, layout, gross, rent_amt, bld_type,
                         src_type, owner, owner_tel, nation, 
-                        max_occ if max_occ else "N/A", remark, date, ts, who
+                        max_occ, remark, date, ts, who
                     ], value_input_option="RAW")
                     st.success("✅ 盤源已新增")
                     st.rerun()
@@ -456,7 +459,7 @@ elif main_mode == "🏢 租賃盤源管理":
                         f"A{sheet_row}:O{sheet_row}",
                         [[address, unit_type, layout, gross, rent_amt, bld_type, 
                           src_type, owner, owner_tel, nation,
-                          max_occ if max_occ else "N/A", remark, str(row["上架日期"]), ts, who]], value_input_option="RAW"
+                          max_occ, remark, str(row["上架日期"]), ts, who]], value_input_option="RAW"
                     )
                     st.success("✅ 已成功更改盤源")
                     st.rerun()
