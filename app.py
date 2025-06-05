@@ -59,14 +59,14 @@ for col in ["收租金額", "過戶金額"]:
 for col in ["建築面積", "租金要求"]:
     if col in listing_df.columns:
         listing_df[col] = pd.to_numeric(listing_df[col], errors="coerce")
-for col in ["最多入住人數", "最多人數限制", "業主電話"]:
+for col in ["最多人數限制", "業主電話"]:
     if col in listing_df.columns:
         listing_df[col] = listing_df[col].astype(str)
 
 if main_mode == "👥 租客資料管理":
     # 讀取資料
     st.subheader("📋 租客資料")
-    st.dataframe(tenant_df, use_container_width=True)
+    st.dataframe(tenant_df.set_index(pd.RangeIndex(start=1, stop=len(tenant_df)+1)), use_container_width=True)
     sub_mode = st.radio("📋 租客操作選項", ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪除租客資料"], horizontal=True)
 
     # ────────────────── 新增 ──────────────────
@@ -262,14 +262,14 @@ elif main_mode == "📆 租金處理進度":
     col1.metric("📋 總租客數", total_rooms)
     col2.metric("✅ 已交租", paid_rooms)
     col3.metric("⚠️ 未交租", unpaid_rooms)
-    st.dataframe(filtered_df.drop(columns=["key"]), use_container_width=True)
+    st.dataframe(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True)
 
     if unpaid_rooms > 0:
         st.markdown("### ❌ 未交租租客名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
         view_df = unpaid_df[show_cols].copy()
         view_df = view_df.rename(columns={"每月固定租金": "應付租金"})
-        st.dataframe(view_df, use_container_width=True)
+        st.dataframe(view_df.set_index(pd.RangeIndex(start=1, stop=len(view_df)+1)), use_container_width=True)
     else:
         st.success(f"🥳 所有租客都已繳交{selected_year} 年 {selected_month} 月月租金")
 
@@ -389,8 +389,8 @@ elif main_mode == "🏢 租賃盤源管理":
         filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
     st.write(f"共找到{len(filtered_listing)}個{layout_selected}盤源")
     st.markdown(f"### 🏢 {layout_selected}盤源一覽")
-    st.dataframe(filtered_listing, use_container_width=True)
-
+    st.dataframe(filtered_listing.set_index(pd.RangeIndex(start=1, stop=len(filtered_listing)+1)), use_container_width=True)
+    
     sub_mode = st.radio("📋 盤源操作選項", ["➕ 新增盤源", "✏️ 更改盤源", "🗑️ 刪除盤源"], horizontal=True)
     if sub_mode == "➕ 新增盤源":
         with st.form("add_listing_form"):
@@ -404,7 +404,7 @@ elif main_mode == "🏢 租賃盤源管理":
             owner     = st.text_input("👤 業主姓名")
             owner_tel = st.text_input("📱 業主電話")
             nation    = st.selectbox("🌏 預期租客國籍", ["中國", "無限制", "外國"])
-            max_occ   = st.number_input("👥 最多入住人數", min_value=1, step=1, value=1)
+            max_occ   = st.number_input("👥 最多人數限制", min_value=1, step=1, value=1)
             remark    = st.text_area("📝 備註")
             date      = st.date_input("📅 上架日期", value=pd.Timestamp.now().date())
 
@@ -448,7 +448,7 @@ elif main_mode == "🏢 租賃盤源管理":
                 owner     = st.text_input("👤 業主姓名", row["業主姓名"])
                 owner_tel = st.text_input("📱 業主電話", row["業主電話"])
                 nation    = st.text_input("🌏 預期租客國籍", row["預期租客國籍"])
-                max_occ   = st.number_input("👥 最多入住人數", min_value=1, step=1, value=1 if str(row["最多入住人數"])=="N/A" else int(row["最多入住人數"]))
+                max_occ   = st.number_input("👥 最多人數限制", min_value=1, step=1, value=1 if str(row["最多人數限制"])=="N/A" else int(row["最多人數限制"]))
                 remark    = st.text_area("📝 備註", row["備註"])
 
                 if st.form_submit_button("💾 儲存修改"):
