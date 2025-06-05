@@ -269,7 +269,8 @@ elif main_mode == "📆 租金處理進度":
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
         view_df = unpaid_df[show_cols].copy()
         view_df = view_df.rename(columns={"每月固定租金": "應付租金"})
-        st.dataframe(view_df.set_index(pd.RangeIndex(start=1, stop=len(view_df)+1)), use_container_width=True)
+        # st.dataframe(view_df.set_index(pd.RangeIndex(start=1, stop=len(view_df)+1)), use_container_width=True)
+        st.dataframe(view_df, use_container_width=True)
     else:
         st.success(f"🥳 所有租客都已繳交{selected_year} 年 {selected_month} 月月租金")
 
@@ -338,7 +339,11 @@ elif main_mode == "📆 租金處理進度":
         if rentflow_df.empty:
             st.info("目前尚無紀錄可修改")
         else:
-            rentflow_df["選項"] = rentflow_df["租客姓名"] + "｜" + rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
+            rentflow_df["選項"] = (
+                rentflow_df["租客姓名"] + "｜" +
+                rentflow_df["單位地址"] + "｜" +
+                rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
+            )
             choice = st.selectbox("選擇要修改的紀錄", rentflow_df["選項"].tolist())
             idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
             row_data = rentflow_df.loc[idx]
@@ -447,7 +452,8 @@ elif main_mode == "🏢 租賃盤源管理":
                                          index=["獨家", "合作", "自己盤"].index(row["盤源權限"]))
                 owner     = st.text_input("👤 業主姓名", row["業主姓名"])
                 owner_tel = st.text_input("📱 業主電話", row["業主電話"])
-                nation    = st.text_input("🌏 預期租客國籍", row["預期租客國籍"])
+                nation    = st.selectbox("🌏 預期租客國籍", ["中國", "無限制", "外國"],
+                                         index=["中國", "無限制", "外國"].index(row["預期租客國籍"]))
                 max_occ   = st.number_input("👥 最多人數限制", min_value=1, step=1, value=1 if str(row["最多人數限制"])=="N/A" else int(row["最多人數限制"]))
                 remark    = st.text_area("📝 備註", row["備註"])
 
