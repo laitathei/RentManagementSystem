@@ -262,6 +262,7 @@ elif main_mode == "📆 租金處理進度":
         (filtered_df["已存入租金"].astype(str).str.upper() != "TRUE")
     ]
     received_not_deposited_count = len(received_not_deposited_df)
+    received_not_deposited_df["key"] = received_not_deposited_df.index + 2
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("📋 總租客數", total_rooms)
@@ -282,9 +283,9 @@ elif main_mode == "📆 租金處理進度":
     # ❷ 顯示已收租但未入帳租客
     if not received_not_deposited_df.empty:
         st.markdown("### 🏦 已收租但尚未過戶名單")
-        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
+        show_cols = [c for c in ["資料列", "租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
-        st.dataframe(view_df2, use_container_width=True)
+        st.dataframe(view_df2.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(view_df2.drop(columns=["key"]))+1)), use_container_width=True)
     else:
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
 
