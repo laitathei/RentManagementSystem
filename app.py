@@ -12,7 +12,7 @@ if "authenticated" not in st.session_state:
 
 # 字體控制功能
 if "font_size" not in st.session_state:
-    st.session_state.font_size = 12
+    st.session_state.font_size = 16
 col_font1, col_font2 = st.columns([1, 1])
 with col_font1:
     if st.button("🔍 放大字體"):
@@ -20,14 +20,17 @@ with col_font1:
 with col_font2:
     if st.button("🔎 縮小字體"):
         st.session_state.font_size = max(st.session_state.font_size - 2, 6)
-st.markdown(f""" 
+st.markdown(f"""
     <style>
-    html, body, [class*="css"] {{
+    html, body, [class*="css"]  {{
+        font-size: {st.session_state.font_size}px !important;
+    }}
+    .stDataFrame div[data-testid="stDataFrame"] .ag-cell,
+    .stDataEditor div[data-testid="stDataEditor"] .ag-cell {{
         font-size: {st.session_state.font_size}px !important;
     }}
     </style>
 """, unsafe_allow_html=True)
-
 # 主選單開始
 
 if not st.session_state.authenticated:
@@ -86,7 +89,7 @@ for col in ["最多人數限制", "業主電話"]:
 if main_mode == "👥 租客資料管理":
     # 讀取資料
     st.subheader("📋 租客資料")
-    st.data_editor(tenant_df.set_index(pd.RangeIndex(start=1, stop=len(tenant_df)+1)), use_container_width=True)
+    st.data_editor(tenant_df.set_index(pd.RangeIndex(start=1, stop=len(tenant_df)+1)), use_container_width=True, disabled=True)
     sub_mode = st.radio("📋 租客操作選項", ["➕ 新增租客資料", "✏️ 更改租客資料", "🗑️ 刪除租客資料"], horizontal=True)
 
     # ────────────────── 新增 ──────────────────
@@ -288,14 +291,14 @@ elif main_mode == "📆 租金處理進度":
     col2.metric("✅ 已交租", paid_rooms)
     col3.metric("⚠️ 未交租", unpaid_rooms)
     col4.metric("🏦 待入帳", received_not_deposited_count)
-    st.data_editor(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True)
+    st.data_editor(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True, disabled=True)
 
     # ❶ 顯示未交租租客
     if not unpaid_df.empty:
         st.markdown("### ❌ 未交租租客名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
         view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
-        st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True)
+        st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
     else:
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
 
@@ -304,7 +307,7 @@ elif main_mode == "📆 租金處理進度":
         st.markdown("### 🏦 已收租但尚未過戶名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
-        st.data_editor(view_df2.set_index(view_df2.index + 1), use_container_width=True)
+        st.data_editor(view_df2.set_index(view_df2.index + 1), use_container_width=True, disabled=True)
     else:
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
 
@@ -457,7 +460,7 @@ elif main_mode == "🏢 租賃盤源管理":
         filtered_listing = listing_df[listing_df["間隔"] == layout_selected]
     st.write(f"共找到{len(filtered_listing)}個{layout_selected}盤源")
     st.markdown(f"### 🏢 {layout_selected}盤源一覽")
-    st.data_editor(filtered_listing.set_index(pd.RangeIndex(start=1, stop=len(filtered_listing)+1)), use_container_width=True)
+    st.data_editor(filtered_listing.set_index(pd.RangeIndex(start=1, stop=len(filtered_listing)+1)), use_container_width=True, disabled=True)
     
     sub_mode = st.radio("📋 盤源操作選項", ["➕ 新增盤源", "✏️ 更改盤源", "🗑️ 刪除盤源"], horizontal=True)
     if sub_mode == "➕ 新增盤源":
