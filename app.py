@@ -10,6 +10,26 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
     st.session_state.user_name = ""
 
+# 字體控制功能
+if "font_size" not in st.session_state:
+    st.session_state.font_size = 16
+col_font1, col_font2 = st.columns([1, 1])
+with col_font1:
+    if st.button("🔍 放大字體"):
+        st.session_state.font_size = min(st.session_state.font_size + 2, 32)
+with col_font2:
+    if st.button("🔎 縮小字體"):
+        st.session_state.font_size = max(st.session_state.font_size - 2, 10)
+st.markdown(f"""
+    <style>
+    html, body, [class*="css"] {{
+        font-size: {st.session_state.font_size}px !important;
+    }}
+    </style>
+""", unsafe_allow_html=True)
+
+# 主選單開始
+
 if not st.session_state.authenticated:
     st.title("🏠 公司管理系統")
     st.subheader("🔐 請輸入密碼登入")
