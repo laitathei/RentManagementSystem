@@ -284,7 +284,7 @@ elif main_mode == "📆 租金處理進度":
         st.markdown("### 🏦 已收租但尚未過戶名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
-        st.dataframe(view_df2.set_index(view_df2.index + 2), use_container_width=True)
+        st.dataframe(view_df2.set_index(view_df2.index + 1), use_container_width=True)
     else:
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
 
@@ -411,17 +411,17 @@ elif main_mode == "📆 租金處理進度":
         if rentflow_df.empty:
             st.info("目前尚無紀錄可刪除")
         else:
-            rentflow_df["選項"] = (
+            selector = (
                 rentflow_df["租客姓名"] + "｜" +
                 rentflow_df["單位地址"] + "｜" +
                 rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
             )
-            choice = st.selectbox("選擇要刪除的紀錄", rentflow_df["選項"].tolist())
-            idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
-            gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
+            choice    = st.selectbox("選擇要刪除的紀錄", selector)
+            idx       = selector.tolist().index(choice)
+            sheet_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
             if st.button("⚠️ 確認刪除"):
-                sheet_rentflow.delete_rows(gs_row)
+                sheet_rentflow.delete_rows(sheet_row)
                 st.warning(f"✅ 已刪除：{choice}")
                 st.rerun()
 
