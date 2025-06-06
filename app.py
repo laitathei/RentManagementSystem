@@ -283,7 +283,7 @@ elif main_mode == "📆 租金處理進度":
     # ❷ 顯示已收租但未入帳租客
     if not received_not_deposited_df.empty:
         st.markdown("### 🏦 已收租但尚未過戶名單")
-        show_cols = [c for c in ["資料列", "租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
+        show_cols = [c for c in ["key", "租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
         st.dataframe(view_df2.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(view_df2.drop(columns=["key"]))+1)), use_container_width=True)
     else:
