@@ -270,10 +270,6 @@ elif main_mode == "📆 租金處理進度":
     col4.metric("🏦 待入帳", received_not_deposited_count)
     st.dataframe(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True)
 
-    # 條件2：未收租（FALSE 或空）
-    not_received_keys = set(filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]["key"])
-    unpaid_df = tenant_df[tenant_df["key"].isin(not_received_keys)]
-
     # ❶ 顯示未交租租客
     if not unpaid_df.empty:
         st.markdown("### ❌ 未交租租客名單")
@@ -281,7 +277,7 @@ elif main_mode == "📆 租金處理進度":
         view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
         st.dataframe(view_df, use_container_width=True)
     else:
-        st.success("🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
+        st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
 
     # ❷ 顯示已收租但未入帳租客
     if not received_not_deposited_df.empty:
@@ -290,7 +286,7 @@ elif main_mode == "📆 租金處理進度":
         view_df2 = received_not_deposited_df[show_cols]
         st.dataframe(view_df2, use_container_width=True)
     else:
-        st.success("🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
+        st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
