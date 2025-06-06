@@ -301,13 +301,14 @@ elif main_mode == "📆 租金處理進度":
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
             st.stop()
 
-        selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+        selector = unpaid_df["租客姓名"] + "｜" + unpaid_df["單位地址"]
         sel_opt = st.selectbox("租客", selector)
+
         idx = selector.tolist().index(sel_opt)
-        default_phone = str(tenant_df.iloc[idx]["租客電話"]).lstrip("'").strip()
+        default_phone = str(unpaid_df.iloc[idx]["租客電話"]).lstrip("'").strip()
         name = sel_opt.split("｜")[0]
-        address = tenant_df.iloc[idx]["單位地址"]
-        default_rent = float(tenant_df.iloc[idx]["每月固定租金"])
+        address = unpaid_df.iloc[idx]["單位地址"]
+        default_rent = float(unpaid_df.iloc[idx]["每月固定租金"])
 
         receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
         deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
