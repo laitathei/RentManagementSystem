@@ -257,27 +257,54 @@ elif main_mode == "📆 租金處理進度":
     unpaid_rooms = total_rooms - paid_rooms           # 未交租房間數
     unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]
     
+    received_not_deposited_df = filtered_df[
+        (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE") &
+        (filtered_df["已存入租金"].astype(str).str.upper() != "TRUE")
+    ]
+    received_not_deposited_count = len(received_not_deposited_df)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("📋 總租客數", total_rooms)
     col2.metric("✅ 已交租", paid_rooms)
     col3.metric("⚠️ 未交租", unpaid_rooms)
+    col4.metric("🏦 待入帳", received_not_deposited_count)
     st.dataframe(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True)
 
-    if unpaid_rooms > 0:
+    # 條件2：未收租（FALSE 或空）
+    not_received_keys = set(filtered_df[filtered_df["已收取租金"].astype(str).str.upper() != "TRUE"]["key"])
+    unpaid_df = tenant_df[tenant_df["key"].isin(not_received_keys)]
+
+    # ❶ 顯示未交租租客
+    if not unpaid_df.empty:
         st.markdown("### ❌ 未交租租客名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
-        view_df = unpaid_df[show_cols].copy()
-        view_df = view_df.rename(columns={"每月固定租金": "應付租金"})
-        # st.dataframe(view_df.set_index(pd.RangeIndex(start=1, stop=len(view_df)+1)), use_container_width=True)
+        view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
         st.dataframe(view_df, use_container_width=True)
     else:
-        st.success(f"🥳 所有租客都已繳交{selected_year} 年 {selected_month} 月月租金")
+        st.success("🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
 
-    sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄"], horizontal=True)
+    # ❷ 顯示已收租但未入帳租客
+    if not received_not_deposited_df.empty:
+        st.markdown("### 🏦 已收租但尚未過戶名單")
+        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
+        view_df2 = received_not_deposited_df[show_cols]
+        st.dataframe(view_df2, use_container_width=True)
+    else:
+        st.success("🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
+
+    sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
         
+        tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+        filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"]
+        paid_keys = set(filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]["key"])
+        unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]
+
+        if unpaid_df.empty:
+            st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
+            st.stop()
+
         selector = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
         sel_opt = st.selectbox("租客", selector)
         idx = selector.tolist().index(sel_opt)
@@ -382,6 +409,25 @@ elif main_mode == "📆 租金處理進度":
                     st.success("✅ 已成功修改紀錄")
                     st.rerun()
 
+    elif sub_mode == "🗑️ 刪除租金紀錄":
+        st.subheader("🗑️ 刪除租金紀錄")
+        if rentflow_df.empty:
+            st.info("目前尚無紀錄可刪除")
+        else:
+            rentflow_df["選項"] = (
+                rentflow_df["租客姓名"] + "｜" +
+                rentflow_df["單位地址"] + "｜" +
+                rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
+            )
+            choice = st.selectbox("選擇要刪除的紀錄", rentflow_df["選項"].tolist())
+            idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
+            gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
+
+            if st.button("⚠️ 確認刪除"):
+                sheet_rentflow.delete_rows(gs_row)
+                st.warning(f"✅ 已刪除：{choice}")
+                st.rerun()
+
 elif main_mode == "🏢 租賃盤源管理":
     st.markdown("### 🔍 查詢間隔類型的盤源")
     layout_options = sorted(listing_df["間隔"].dropna().unique())
@@ -469,7 +515,6 @@ elif main_mode == "🏢 租賃盤源管理":
                     )
                     st.success("✅ 已成功更改盤源")
                     st.rerun()
-
 
     # ─────────────── ➌ 刪除盤源 ───────────────
     elif sub_mode == "🗑️ 刪除盤源":
