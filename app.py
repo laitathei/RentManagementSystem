@@ -374,21 +374,41 @@ elif main_mode == "📆 租金處理進度":
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
             trow = unpaid_df.iloc[idx]                        # 取得該租客在 tenant_df 的資料
-            prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
-            matching_prev = rentflow_df[
+            # prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
+            # matching_prev = rentflow_df[
+            #     (rentflow_df["租客姓名"] == name) &
+            #     (rentflow_df["單位地址"] == address) &
+            #     (rentflow_df["年度"] == prev_year) &
+            #     (rentflow_df["月份"] == prev_month)
+            # ]
+
+            hist_df = rentflow_df[
                 (rentflow_df["租客姓名"] == name) &
                 (rentflow_df["單位地址"] == address) &
-                (rentflow_df["年度"] == prev_year) &
-                (rentflow_df["月份"] == prev_month)
+                (
+                    (rentflow_df["年度"] < year) |
+                    ((rentflow_df["年度"] == year) & (rentflow_df["月份"] < month))
+                )
             ]
 
-            if not matching_prev.empty:
-                prev_row = matching_prev.iloc[0]
+            # ➋ 取出最近一筆（年度、月份都最大的那行）
+            if not hist_df.empty:
+                # 先按 年度、月份 由大到小排序，再取第一筆
+                prev_row = hist_df.sort_values(["年度", "月份"], ascending=False).iloc[0]
                 prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始水錶度數"])
                 prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
             else:
+                # 找不到任何舊紀錄，就用租客資料的「起始錶度數」
                 prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
+
+            # if not matching_prev.empty:
+            #     prev_row = matching_prev.iloc[0]
+            #     prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始水錶度數"])
+            #     prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
+            # else:
+            #     prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
+            #     prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
 
             if calculate_done:
                 curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0)
@@ -431,12 +451,12 @@ elif main_mode == "📆 租金處理進度":
 
                 if "rent_calc" in st.session_state:
                     rc = st.session_state["rent_calc"]
-                    st.info(f"💧 本月水錶: HK$ {float(curr_water_units):,.0f}")
-                    st.info(f"💧 上月水錶: HK$ {float(prev_water_units):,.0f}")
-                    st.info(f"⚡ 本月電錶: HK$ {float(curr_elec_units):,.0f}")
-                    st.info(f"⚡ 上月電錶: HK$ {float(prev_elec_units):,.0f}")
-                    st.info(f"💧 每度水費: HK$ {float(trow["每度水費"]):,.0f}")
-                    st.info(f"⚡ 每度電費: HK$ {float(trow["每度電費"]):,.0f}")
+                    st.info(f"💧 本月水錶: {float(curr_water_units)}")
+                    st.info(f"💧 上月水錶: {float(prev_water_units)}")
+                    st.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
+                    st.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
+                    st.info(f"💧 每度水費: {float(trow["每度水費"])}")
+                    st.info(f"⚡ 每度電費: {float(trow["每度電費"])}")
                     st.info(f"💧 水費: HK$ {rc['water_fee']:,.0f}")
                     st.info(f"⚡ 電費: HK$ {rc['elec_fee']:,.0f}")
                     st.info(f"💰 租金: HK$ {default_rent:,.0f}")
