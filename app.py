@@ -287,22 +287,20 @@ elif main_mode == "📆 租金處理進度":
     tenant_df["租約開始日"] = pd.to_datetime(tenant_df["租約開始日"], errors="coerce")
     tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
 
-    # ────── ❸ 只挑出「本月需要交租」的租客 (= 已開始且未退租) ──────
-    # active_df = tenant_df[
-    #     (tenant_df["租約開始日"] <= month_start) &
-    #     (tenant_df["租約結束日"].isna() | (tenant_df["租約結束日"] >= month_start))
-    # ].copy()
-    active_df = tenant_df[
-        pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
-    ].copy()
+    # 續租
+    cond_renew = (
+        (tenant_df["租約狀態"] == "續租") &
+        (tenant_df["租約開始日"] < month_start) &                # 已開始
+        (
+            tenant_df["租約結束日"].isna() |                      # 沒有結束日
+            (tenant_df["租約結束日"] >= month_start)              # 或尚未到期
+        )
+    )
 
-    # 續租 = 一律要收
-    cond_renew = tenant_df["租約狀態"] == "續租"
-
-    # 新租 = 起租日在本月 1 號「之前」才要收(即首租期由下一月開始)
-    cond_new   = (
-        (tenant_df["租約狀態"] != "續租") &            # 空白或「新租」
-        (tenant_df["租約開始日"] < month_start)        # 嚴格 < 本月 1 日
+    # 新租
+    cond_new = (
+        (tenant_df["租約狀態"] != "續租") &
+        (tenant_df["租約開始日"] < month_start)
     )
 
     active_df = tenant_df[cond_renew | cond_new].copy()
@@ -317,7 +315,6 @@ elif main_mode == "📆 租金處理進度":
     total_rooms  = len(active_df)                     # 全部房間
     unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
     unpaid_rooms = len(unpaid_df)           # 未交租房間數
-    # unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
     
     received_not_deposited_df = filtered_df[
         (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE") &
@@ -366,27 +363,6 @@ elif main_mode == "📆 租金處理進度":
         tenant_df["租約開始日"] = pd.to_datetime(tenant_df["租約開始日"], errors="coerce")
         tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
         tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
-
-        cond_renew = (
-            (tenant_df["租約狀態"] == "續租") &
-            (tenant_df["租約開始日"] < month_start) &                # 已開始
-            (
-                tenant_df["租約結束日"].isna() |                      # 沒有結束日
-                (tenant_df["租約結束日"] >= month_start)              # 或尚未到期
-            )
-        )
-
-        cond_new = (
-            (tenant_df["租約狀態"] != "續租") &
-            (tenant_df["租約開始日"] < month_start)
-        )
-
-        active_df = tenant_df[cond_renew | cond_new].copy()
-
-        # active_df = tenant_df[
-        #     (tenant_df["租約開始日"] < month_start) &
-        #     ((tenant_df["租約結束日"].isna()) | (tenant_df["租約狀態"] == "續租") | (tenant_df["租約結束日"] >= month_start))
-        # ]
 
         # 計算已交租租客 key
         filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"]
