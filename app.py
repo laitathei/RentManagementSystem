@@ -393,38 +393,55 @@ elif main_mode == "📆 租金處理進度":
             if calculate_done:
                 curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0)
                 curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=0.0)
-                water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
-                elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
 
-                # ② 計算水費
-                if str(trow["每度水費"]).upper() != "N/A" and water_units:
-                    water_fee = water_units * float(trow["每度水費"])
-                elif str(trow["固定水費"]).upper() != "N/A":
-                    water_fee = float(trow["固定水費"])
-                else:
-                    water_fee = 0
+                if st.form_submit_button("🔢 計算"):
+                    water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
+                    elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
 
-                # ③ 計算電費
-                if str(trow["每度電費"]).upper() != "N/A" and elec_units:
-                    elec_fee = elec_units * float(trow["每度電費"])
-                elif str(trow["固定電費"]).upper() != "N/A":
-                    elec_fee = float(trow["固定電費"])
-                else:
-                    elec_fee = 0
+                    # ② 計算水費
+                    if str(trow["每度水費"]).upper() != "N/A" and water_units:
+                        water_fee = water_units * float(trow["每度水費"])
+                    elif str(trow["固定水費"]).upper() != "N/A":
+                        water_fee = float(trow["固定水費"])
+                    else:
+                        water_fee = 0
 
-                calculate_amt = default_rent + water_fee + elec_fee
-                water_elec_fee = water_fee + elec_fee
-                calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
-                st.info(f"💧 水費: HK$ {water_fee:,.0f}")
-                st.info(f"⚡ 電費: HK$ {elec_fee:,.0f}")
-                st.info(f"💰 租金:HK$ {default_rent:,.0f}")
-                st.info(f"🔢 合共: HK$ {calculate_amt:,.0f}")
+                    # ③ 計算電費
+                    if str(trow["每度電費"]).upper() != "N/A" and elec_units:
+                        elec_fee = elec_units * float(trow["每度電費"])
+                    elif str(trow["固定電費"]).upper() != "N/A":
+                        elec_fee = float(trow["固定電費"])
+                    else:
+                        elec_fee = 0
+
+                    calculate_amt = default_rent + water_fee + elec_fee
+                    water_elec_fee = water_fee + elec_fee
+                    calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
+
+                    # ⬇︎ 把結果暫存，供後面「新增」使用
+                    st.session_state["rent_calc"] = {
+                        "water_units": water_units,
+                        "elec_units": elec_units,
+                        "water_fee": water_fee,
+                        "elec_fee": elec_fee,
+                        "water_elec_fee": water_elec_fee,
+                        "calculate_amt": calculate_amt,
+                        "calculate_date": calculate_date
+                    }
+
+                if "rent_calc" in st.session_state:
+                    rc = st.session_state["rent_calc"]
+                    st.info(f"💧 水費: HK$ {rc['water_fee']:,.0f}")
+                    st.info(f"⚡ 電費: HK$ {rc['elec_fee']:,.0f}")
+                    st.info(f"💰 租金: HK$ {default_rent:,.0f}")
+                    st.info(f"🔢 合共: HK$ {rc['calculate_amt']:,.0f}")
             else:
                 water_fee = ""
                 elec_fee = ""
                 water_elec_fee = ""
                 calculate_date = ""
                 calculate_amt = ""
+                st.session_state.pop("rent_calc", None)   # 取消勾選時清空
 
             if receive_done:
                 receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
@@ -440,6 +457,26 @@ elif main_mode == "📆 租金處理進度":
                 deposit_amt = ""
 
             if st.form_submit_button("✅ 新增"):
+                # ── 1. 檢查是否已試算 ──
+                if calculate_done and "rent_calc" not in st.session_state:
+                    st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
+                    st.stop()
+
+                # 若 calculate_done = False，代表不用計算水電費，
+                # 這時 rent_calc 可能不存在，直接給空值即可。
+                rc = st.session_state.get("rent_calc", {})
+
+                # ── 2. 取出試算結果（沒有就給空 / 0）──
+                water_units     = rc.get("water_units", "")
+                prev_water_units = prev_water_units          # 仍沿用先前計算好的舊度數
+                water_fee       = rc.get("water_fee", "")
+                elec_units      = rc.get("elec_units", "")
+                prev_elec_units = prev_elec_units
+                elec_fee        = rc.get("elec_fee", "")
+                water_elec_fee  = rc.get("water_elec_fee", "")
+                calculate_amt   = rc.get("calculate_amt", "")
+                calculate_date  = rc.get("calculate_date", "")
+
                 tz_hk = pytz.timezone("Asia/Hong_Kong")
                 ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                 who = st.session_state.get("user_name", "unknown")
@@ -469,6 +506,7 @@ elif main_mode == "📆 租金處理進度":
                     ]
                     sheet_rentflow.append_row(row, value_input_option="RAW")
                     st.success("✅ 已成功新增租金紀錄")
+                    st.session_state.pop("rent_calc", None)
                     st.rerun()
 
     elif sub_mode == "✏️ 更改租金紀錄":
