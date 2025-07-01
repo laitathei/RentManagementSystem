@@ -267,21 +267,33 @@ elif main_mode == "📆 租金處理進度":
     all_months = sorted(set(rentflow_df["月份"].unique().tolist() + [now.month]))
     selected_year  = st.selectbox("選擇年份", all_years, index=0)
     selected_month = st.selectbox("選擇月份", all_months, index=all_months.index(now.month))
+    month_start = pd.Timestamp(selected_year, selected_month, 1)
     filtered_df = rentflow_df[
         (rentflow_df["年度"] == selected_year) &
         (rentflow_df["月份"] == selected_month)
     ]
 
+    # ────── ❷ 將租約日期欄位轉為 datetime，方便比對 ──────
+    tenant_df["租約開始日"] = pd.to_datetime(tenant_df["租約開始日"], errors="coerce")
+    tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
+
+    # ────── ❸ 只挑出「本月需要交租」的租客 (= 已開始且未退租) ──────
+    active_df = tenant_df[
+        (tenant_df["租約開始日"] <= month_start) &
+        (tenant_df["租約結束日"].isna() | (tenant_df["租約結束日"] >= month_start))
+    ].copy()
+
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
-    tenant_df["key"]   = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"].astype(str)
+    active_df["key"]   = active_df["租客姓名"] + "｜" + active_df["單位地址"].astype(str)
     filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
     
     paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
     paid_rooms = len(paid_df)                         # ← 行數就是房間數
     paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
-    total_rooms  = len(tenant_df)                     # 全部房間
-    unpaid_rooms = total_rooms - paid_rooms           # 未交租房間數
-    unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]
+    total_rooms  = len(active_df)                     # 全部房間
+    unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
+    unpaid_rooms = len(unpaid_df)           # 未交租房間數
+    # unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
     
     received_not_deposited_df = filtered_df[
         (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE") &
