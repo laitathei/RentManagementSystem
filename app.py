@@ -365,7 +365,7 @@ elif main_mode == "📆 租金處理進度":
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
 
-        if unpaid_df.empty:
+        if total_rooms == deposited_rooms:
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
             st.stop()
 
