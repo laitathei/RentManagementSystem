@@ -342,7 +342,9 @@ elif main_mode == "📆 租金處理進度":
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
 
     # ❷ 顯示已收租但未入帳租客
-    if not received_not_deposited_df.empty:
+    if filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"].empty:
+        st.info(f"尚未有 {selected_year} 年 {selected_month} 月的收租紀錄")
+    elif received_not_deposited_df.empty:
         st.markdown("### 🏦 已收租但尚未過戶名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
@@ -370,7 +372,7 @@ elif main_mode == "📆 租金處理進度":
 
         active_df = tenant_df[
             (tenant_df["租約開始日"] <= month_start) &
-            ((tenant_df["租約結束日"].isna()) | (tenant_df["租約結束日"] >= month_start))
+            ((tenant_df["租約結束日"].isna()) | (tenant_df["租約狀態"] == "續租") | (tenant_df["租約結束日"] >= month_start))
         ]
 
         # 計算已交租租客 key
@@ -379,7 +381,6 @@ elif main_mode == "📆 租金處理進度":
 
         # 從應收租的租客中，排除已交租的，得到「應收但未交」
         unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
-
 
         if unpaid_df.empty:
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
@@ -445,7 +446,10 @@ elif main_mode == "📆 租金處理進度":
 
                 calculate_amt = default_rent + water_fee + elec_fee
                 calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
-                st.info(f"💧 水費：HK$ {water_fee:,.0f}　　⚡ 電費：HK$ {elec_fee:,.0f}　　💰 租金：HK$ {default_rent:,.0f}　　🔢 合共：HK$ {calculate_amt:,.0f}")
+                st.info(f"💧 水費: HK$ {water_fee:,.0f}")
+                st.info(f"⚡ 電費: HK$ {elec_fee:,.0f}")
+                st.info(f"💰 租金:HK$ {default_rent:,.0f}")
+                st.info(f"🔢 合共: HK$ {calculate_amt:,.0f}")
             else:
                 calculate_date = ""
                 total_payable = ""
