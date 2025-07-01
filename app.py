@@ -73,7 +73,7 @@ rentflow_data = sheet_rentflow.get_all_records()
 rentflow_df   = pd.DataFrame(rentflow_data)
 listing_data  = sheet_listings.get_all_records()
 listing_df    = pd.DataFrame(listing_data)
-for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費"]:
+for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費", "起始水錶度數", "起始電錶度數"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
 for col in ["收租金額", "過戶金額"]:
@@ -162,7 +162,7 @@ if main_mode == "👥 租客資料管理":
             choice = st.selectbox("選擇欲修改的租客", selector)
             idx = selector.tolist().index(choice)
             sheet_row = idx + 2  # Sheet 2-based
-            row      = tenant_df.iloc[idx]
+            row = tenant_df.iloc[idx]
 
             water_mode_options    = ["每度計算", "固定金額", "不代收"]
             electric_mode_options = ["每度計算", "固定金額", "不代收"]
@@ -185,7 +185,6 @@ if main_mode == "👥 租客資料管理":
             water_mode = st.radio("💧 水費收費方式", water_mode_options, index=water_mode_idx, horizontal=True)
             electric_mode = st.radio("⚡ 電費收費方式", electric_mode_options, index=electric_mode_idx, horizontal=True)
         
-            row = tenant_df.iloc[idx]
             with st.form("edit_tenant_form"):
                 name    = st.text_input("租客姓名",  value=row["租客姓名"])
                 phone   = st.text_input("電話",      value=str(row["租客電話"]))
