@@ -278,9 +278,12 @@ elif main_mode == "📆 租金處理進度":
     tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
 
     # ────── ❸ 只挑出「本月需要交租」的租客 (= 已開始且未退租) ──────
+    # active_df = tenant_df[
+    #     (tenant_df["租約開始日"] <= month_start) &
+    #     (tenant_df["租約結束日"].isna() | (tenant_df["租約結束日"] >= month_start))
+    # ].copy()
     active_df = tenant_df[
-        (tenant_df["租約開始日"] <= month_start) &
-        (tenant_df["租約結束日"].isna() | (tenant_df["租約結束日"] >= month_start))
+        pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start+1
     ].copy()
 
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
