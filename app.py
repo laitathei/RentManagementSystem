@@ -89,6 +89,12 @@ for col in ["最多人數限制", "業主電話"]:
     if col in listing_df.columns:
         listing_df[col] = listing_df[col].astype(str)
 
+tenant_df["起始水錶度數"] = pd.to_numeric(tenant_df["起始水錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+tenant_df["起始電錶度數"] = pd.to_numeric(tenant_df["起始電錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+
+rentflow_df["本月水錶度數"] = pd.to_numeric(rentflow_df["本月水錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+rentflow_df["本月電錶度數"] = pd.to_numeric(rentflow_df["本月電錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+
 if main_mode == "👥 租客資料管理":
     # 讀取資料
     st.subheader("📋 租客資料")
