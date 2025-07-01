@@ -131,6 +131,7 @@ if main_mode == "👥 租客資料管理":
             language = st.selectbox("通訊語言", ["中文", "英文"])
             management_fee = st.number_input("收租費", min_value=0.0, value=0.0)
             cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)))
+            lease_type = st.selectbox("租約狀態", ["新租", "續租"], index=0)
             lease_start = st.date_input("租約開始日", key="lease_start", value=pd.Timestamp.now().date())
             lease_end   = st.date_input("租約結束日", key="lease_end", value=pd.Timestamp.now().date() + pd.DateOffset(years=2))
 
@@ -146,7 +147,7 @@ if main_mode == "👥 租客資料管理":
                     st.warning("⚠️ 已存在相同租客姓名與單位地址的紀錄，請確認是否重覆輸入。")
                 else:
                     new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee, init_water_units, init_elec_units,
-                            cutoff_day, language, management_fee, str(lease_start), str(lease_end), ts, who]
+                            cutoff_day, language, management_fee, lease_type, str(lease_start), str(lease_end), ts, who]
                     sheet_tenants.append_row(new_row)
                     st.success(f"✅ 已新增租客：{name}")
                     st.rerun()
@@ -226,7 +227,8 @@ if main_mode == "👥 租客資料管理":
 
                 language = st.selectbox("通訊語言", ["中文", "英文"], index=0 if row["通訊語言"]=="中文" else 1)
                 management_fee = st.number_input("收租費", min_value=0.0, value=float(row["收租費"]))
-                cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)), index=int(row["截數日"])-1)     
+                cutoff_day = st.selectbox("截數日（每月）", list(range(1, 32)), index=int(row["截數日"])-1)
+                lease_type = st.selectbox("租約狀態", ["新租", "續租"], index = 0 if row["租約狀態"] != "續租" else 1)
                 lease_start = st.date_input("租約開始日", value=pd.to_datetime(row["租約開始日"]) if "租約開始日" in row and row["租約開始日"] else pd.Timestamp.now().date())
                 lease_end   = st.date_input("租約結束日", value=pd.to_datetime(row["租約結束日"]) if "租約結束日" in row and row["租約結束日"] else pd.Timestamp.now().date() + pd.DateOffset(years=2))
 
@@ -237,7 +239,7 @@ if main_mode == "👥 租客資料管理":
                     new_row = [name, phone, address, rent, 
                                fix_water_fee, fix_electric_fee, 
                                water_fee, electric_fee,
-                               cutoff_day, language, management_fee,
+                               cutoff_day, language, management_fee, lease_type,
                                str(lease_start), str(lease_end),
                                ts, who]
                     sheet_tenants.update(f"A{sheet_row}:O{sheet_row}", [new_row])
@@ -285,6 +287,17 @@ elif main_mode == "📆 租金處理進度":
     active_df = tenant_df[
         pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
     ].copy()
+
+    # 續租 = 一律要收
+    cond_renew = tenant_df["租約狀態"] == "續租"
+
+    # 新租 = 起租日在本月 1 號「之前」才要收(即首租期由下一月開始)
+    cond_new   = (
+        (tenant_df["租約狀態"] != "續租") &            # 空白或「新租」
+        (tenant_df["租約開始日"] < month_start)        # 嚴格 < 本月 1 日
+    )
+
+    active_df = tenant_df[cond_renew | cond_new].copy()
 
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
     active_df["key"]   = active_df["租客姓名"] + "｜" + active_df["單位地址"].astype(str)
