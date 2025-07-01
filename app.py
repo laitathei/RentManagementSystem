@@ -288,13 +288,15 @@ elif main_mode == "📆 租金處理進度":
     tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
 
     # ────── ❸ 只挑出「本月需要交租」的租客 (= 已開始且未退租) ──────
-    active_df = tenant_df[
-        pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
-    ].copy()
+    # active_df = tenant_df[
+    #     pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
+    # ].copy()
 
     # 續租 = 一律要收
-    cond_renew = active_df["租約狀態"] == "續租"
-
+    cond_renew = (
+        (tenant_df["租約狀態"] == "續租") &
+        (tenant_df["租約開始日"] <= month_start)
+    )
     # 新租 = 起租日在本月 1 號「之前」才要收(即首租期由下一月開始)
     cond_new   = (
         (tenant_df["租約狀態"] != "續租") &            # 空白或「新租」
