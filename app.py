@@ -409,8 +409,8 @@ elif main_mode == "📆 租金處理進度":
 
             if not matching_prev.empty:
                 prev_row = matching_prev.iloc[0]
-                prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(prev_row["起始水錶度數"])
-                prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(prev_row["起始電錶度數"])
+                prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始水錶度數"])
+                prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
             else:
                 prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
