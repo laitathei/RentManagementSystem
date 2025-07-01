@@ -306,7 +306,7 @@ elif main_mode == "📆 租金處理進度":
     active_df["key"]   = active_df["租客姓名"] + "｜" + active_df["單位地址"].astype(str)
     filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
     
-    calculated_df = filtered_df[filtered_df["已計算費用"].astype(str).str.upper() == "TRUE"]
+    calculated_df = filtered_df[filtered_df["已計算水電"].astype(str).str.upper() == "TRUE"]
     calculated_rooms = len(calculated_df)
     calculated_keys  = set(calculated_df["key"])
     # ① 未計算 = 月內「應收」但 key 不在 calc_keys
