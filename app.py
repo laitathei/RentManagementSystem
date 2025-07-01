@@ -76,6 +76,9 @@ listing_df    = pd.DataFrame(listing_data)
 for col in ["租客姓名", "單位地址", "租客電話", "固定水費", "固定電費", "每度水費", "每度電費", "起始水錶度數", "起始電錶度數"]:
     if col in tenant_df.columns:
         tenant_df[col] = tenant_df[col].astype(str)
+for col in ["本月水錶度數", "上月水錶度數", "本月水費", "本月電錶度數", "上月電錶度數", "本月電費"]:
+    if col in rentflow_df.columns:
+        rentflow_df[col] = rentflow_df[col].astype(str)
 for col in ["收租金額", "過戶金額"]:
     if col in rentflow_df.columns:
         rentflow_df[col] = pd.to_numeric(rentflow_df[col], errors="coerce")
@@ -413,8 +416,8 @@ elif main_mode == "📆 租金處理進度":
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
 
             if calculate_done:
-                curr_water_units = st.number_input("💧 本月用水量 (度)", min_value=0.0, step=0.1, value=0.0)
-                curr_elec_units  = st.number_input("⚡ 本月用電量 (度)", min_value=0.0, step=0.1, value=0.0)
+                curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0)
+                curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=0.0)
                 water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
                 elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
 
