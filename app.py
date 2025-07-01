@@ -365,18 +365,22 @@ elif main_mode == "📆 租金處理進度":
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
 
-        if total_rooms == deposited_rooms:
+        # ① 先抓出『尚未入帳』(deposit = FALSE) 的租客
+        #    邏輯：在「本月份應收(active_df)」裡，但 key 不在 deposit_keys
+        pending_df = active_df[~active_df["key"].isin(deposit_keys)]
+
+        if pending_df.empty:
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
             st.stop()
 
-        selector = unpaid_df["租客姓名"] + "｜" + unpaid_df["單位地址"]
+        selector = pending_df["租客姓名"] + "｜" + pending_df["單位地址"]
         sel_opt = st.selectbox("租客", selector)
 
         idx = selector.tolist().index(sel_opt)
-        default_phone = str(unpaid_df.iloc[idx]["租客電話"]).lstrip("'").strip()
+        default_phone = str(pending_df.iloc[idx]["租客電話"]).lstrip("'").strip()
         name = sel_opt.split("｜")[0]
-        address = unpaid_df.iloc[idx]["單位地址"]
-        default_rent = float(unpaid_df.iloc[idx]["每月固定租金"])
+        address = pending_df.iloc[idx]["單位地址"]
+        default_rent = float(pending_df.iloc[idx]["每月固定租金"])
 
         calculate_done  = st.checkbox("🧮 已計算費用", key="calculate_done_out")
         receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
@@ -388,7 +392,7 @@ elif main_mode == "📆 租金處理進度":
             year = st.number_input("年度", min_value=2000, max_value=2100, value=pd.Timestamp.now().year)
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
-            trow = unpaid_df.iloc[idx]                        # 取得該租客在 tenant_df 的資料
+            trow = pending_df.iloc[idx]                        # 取得該租客在 tenant_df 的資料
             hist_df = rentflow_df[
                 (rentflow_df["租客姓名"] == name) &
                 (rentflow_df["單位地址"] == address) &
