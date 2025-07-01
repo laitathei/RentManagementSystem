@@ -277,7 +277,7 @@ elif main_mode == "📆 租金處理進度":
     all_months = sorted(set(rentflow_df["月份"].unique().tolist() + [now.month]))
     selected_year  = st.selectbox("選擇年份", all_years, index=0)
     selected_month = st.selectbox("選擇月份", all_months, index=all_months.index(now.month))
-    month_start = pd.Timestamp(selected_year, selected_month, 1)
+    month_end = pd.Timestamp(selected_year, selected_month, 1) + pd.offsets.MonthEnd(0)
     filtered_df = rentflow_df[
         (rentflow_df["年度"] == selected_year) &
         (rentflow_df["月份"] == selected_month)
@@ -287,20 +287,16 @@ elif main_mode == "📆 租金處理進度":
     tenant_df["租約開始日"] = pd.to_datetime(tenant_df["租約開始日"], errors="coerce")
     tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
 
-    # ────── ❸ 只挑出「本月需要交租」的租客 (= 已開始且未退租) ──────
-    # active_df = tenant_df[
-    #     pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
-    # ].copy()
-
+    # ────── ❸ 只挑出「本月需要交租」的租客  ──────
     # 續租 = 一律要收
     cond_renew = (
         (tenant_df["租約狀態"] == "續租") &
-        (tenant_df["租約開始日"] <= month_start)
+        (tenant_df["租約開始日"] <= month_end)
     )
     # 新租 = 起租日在本月 1 號「之前」才要收(即首租期由下一月開始)
     cond_new   = (
         (tenant_df["租約狀態"] != "續租") &            # 空白或「新租」
-        (tenant_df["租約開始日"] < month_start)        # 嚴格 < 本月 1 日
+        (tenant_df["租約開始日"] < month_end)        # 嚴格 < 本月 1 日
     )
 
     active_df = tenant_df[cond_renew | cond_new].copy()
