@@ -283,7 +283,7 @@ elif main_mode == "📆 租金處理進度":
     #     (tenant_df["租約結束日"].isna() | (tenant_df["租約結束日"] >= month_start))
     # ].copy()
     active_df = tenant_df[
-        pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start+1
+        pd.to_datetime(tenant_df["租約開始日"], errors="coerce") < month_start
     ].copy()
 
     st.markdown(f"### 📋 {selected_year} 年 {selected_month} 月租金流程")
