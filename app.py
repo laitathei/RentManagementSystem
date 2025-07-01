@@ -306,45 +306,87 @@ elif main_mode == "📆 租金處理進度":
     active_df["key"]   = active_df["租客姓名"] + "｜" + active_df["單位地址"].astype(str)
     filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
     
+    calculated_df = filtered_df[filtered_df["已計算費用"].astype(str).str.upper() == "TRUE"]
+    calculated_rooms = len(calculated_df)
+    calculated_keys  = set(calculated_df["key"])
+    # ① 未計算 = 月內「應收」但 key 不在 calc_keys
+    uncalculated_df = active_df[~active_df["key"].isin(calculated_keys)]
+
     paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
     paid_rooms = len(paid_df)                         # ← 行數就是房間數
     paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
+
+    deposit_df = filtered_df[filtered_df["已存入租金"].astype(str).str.upper() == "TRUE"]["key"]
+    deposit_keys = set(deposit_df["key"])
+
     total_rooms  = len(active_df)                     # 全部房間
-    unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
+    # unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
+    # ② 未收租  = 已經計算 (key 在 calc_keys) 但還沒 paid
+    unpaid_df = active_df[active_df["key"].isin(calculated_keys) & ~active_df["key"].isin(paid_keys)]
     unpaid_rooms = len(unpaid_df)           # 未交租房間數
-    
+
+    # received_not_deposited_df = filtered_df[
+    #     (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE") &
+    #     (filtered_df["已存入租金"].astype(str).str.upper() != "TRUE")
+    # ]
+    # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
     received_not_deposited_df = filtered_df[
-        (filtered_df["已收取租金"].astype(str).str.upper() == "TRUE") &
-        (filtered_df["已存入租金"].astype(str).str.upper() != "TRUE")
+        (filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))
     ]
     received_not_deposited_count = len(received_not_deposited_df)
 
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     col1.metric("📋 總租客數", total_rooms)
-    col2.metric("✅ 已交租", paid_rooms)
-    col3.metric("⚠️ 未交租", unpaid_rooms)
+    col2.metric("🧮 已計算水電", calculated_rooms)
+    col3.metric("✅ 已交租", paid_rooms)
     col4.metric("🏦 待入帳", received_not_deposited_count)
+    col5.metric("⚠️ 未交租", unpaid_rooms)
     st.data_editor(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True, disabled=True)
 
-    # ❶ 顯示未交租租客
+    # ❶ 未計算水電
+    if not uncalculated_df.empty:
+        st.markdown("### 🧮 尚未計算水電名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in uncalculated_df.columns]
+        st.data_editor(uncalculated_df[cols].set_index(uncalculated_df.index + 1), use_container_width=True, disabled=True)
+    else:
+        st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成水電計算")
+
+    # ❷ 未收租
     if not unpaid_df.empty:
-        st.markdown("### ❌ 未交租租客名單")
-        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
-        view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
+        st.markdown("### ❌ 未收租名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
+        view_df = unpaid_df[cols].rename(columns={"每月固定租金":"應付租金"})
         st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
     else:
         st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
 
-    # ❷ 顯示已收租但未入帳租客
-    if filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"].empty:
-        st.info(f"尚未有 {selected_year} 年 {selected_month} 月的收租紀錄")
-    elif not received_not_deposited_df.empty:
-        st.markdown("### 🏦 已收租但尚未過戶名單")
-        show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
-        view_df2 = received_not_deposited_df[show_cols]
-        st.data_editor(view_df2.set_index(view_df2.index + 1), use_container_width=True, disabled=True)
+    # ❸ 已收租但未入帳
+    if not received_not_deposited_df.empty:
+        st.markdown("### 🏦 已收租但尚未過數名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
+        st.data_editor(received_not_deposited_df[cols].set_index(received_not_deposited_df.index + 1), use_container_width=True, disabled=True)
     else:
-        st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
+        st.success(f"🥳 所有{selected_year} 年 {selected_month} 月收租紀錄都已完成過戶")
+
+    # # ❶ 顯示未交租租客
+    # if not unpaid_df.empty:
+    #     st.markdown("### ❌ 未交租租客名單")
+    #     show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
+    #     view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
+    #     st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
+    # else:
+    #     st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
+
+    # # ❷ 顯示已收租但未入帳租客
+    # if filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"].empty:
+    #     st.info(f"尚未有 {selected_year} 年 {selected_month} 月的收租紀錄")
+    # elif not received_not_deposited_df.empty:
+    #     st.markdown("### 🏦 已收租但尚未過戶名單")
+    #     show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
+    #     view_df2 = received_not_deposited_df[show_cols]
+    #     st.data_editor(view_df2.set_index(view_df2.index + 1), use_container_width=True, disabled=True)
+    # else:
+    #     st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
@@ -402,14 +444,6 @@ elif main_mode == "📆 租金處理進度":
                 prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
 
-            # if not matching_prev.empty:
-            #     prev_row = matching_prev.iloc[0]
-            #     prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始水錶度數"])
-            #     prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
-            # else:
-            #     prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
-            #     prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
-
             if calculate_done:
                 curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0)
                 curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=0.0)
@@ -420,7 +454,7 @@ elif main_mode == "📆 租金處理進度":
 
                     # ② 計算水費
                     if str(trow["每度水費"]).upper() != "N/A" and water_units:
-                        water_fee = water_units * float(trow["每度水費"])
+                        water_fee = round(water_units * float(trow["每度水費"]))
                     elif str(trow["固定水費"]).upper() != "N/A":
                         water_fee = float(trow["固定水費"])
                     else:
@@ -428,7 +462,7 @@ elif main_mode == "📆 租金處理進度":
 
                     # ③ 計算電費
                     if str(trow["每度電費"]).upper() != "N/A" and elec_units:
-                        elec_fee = elec_units * float(trow["每度電費"])
+                        elec_fee = round(elec_units * float(trow["每度電費"]))
                     elif str(trow["固定電費"]).upper() != "N/A":
                         elec_fee = float(trow["固定電費"])
                     else:
@@ -449,18 +483,29 @@ elif main_mode == "📆 租金處理進度":
                         "calculate_date": calculate_date
                     }
 
-                if "rent_calc" in st.session_state:
-                    rc = st.session_state["rent_calc"]
-                    st.info(f"💧 本月水錶: {float(curr_water_units)}")
-                    st.info(f"💧 上月水錶: {float(prev_water_units)}")
-                    st.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
-                    st.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
-                    st.info(f"💧 每度水費: {float(trow["每度水費"])}")
-                    st.info(f"⚡ 每度電費: {float(trow["每度電費"])}")
-                    st.info(f"💧 水費: HK$ {rc['water_fee']:,.0f}")
-                    st.info(f"⚡ 電費: HK$ {rc['elec_fee']:,.0f}")
-                    st.info(f"💰 租金: HK$ {default_rent:,.0f}")
-                    st.info(f"🔢 合共: HK$ {rc['calculate_amt']:,.0f}")
+                    if "rent_calc" in st.session_state:
+                        rc = st.session_state["rent_calc"]
+
+                        # ➊ 水錶資訊一行
+                        col1, col2, col3 = st.columns(3)
+                        col1.info(f"💧 本月水錶: {float(curr_water_units)}")
+                        col2.info(f"💧 上月水錶: {float(prev_water_units)}")
+                        col3.info(f"💧 每度水費: {float(trow['每度水費'])}")
+
+                        # ➋ 電錶資訊一行
+                        col4, col5, col6 = st.columns(3)
+                        col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
+                        col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
+                        col6.info(f"⚡ 每度電費: {float(trow['每度電費'])}")
+
+                        # ➌ 金額一行（水費／電費／租金）
+                        col7, col8, col9 = st.columns(3)
+                        col7.info(f"💧 水費: HK$ {rc['water_fee']}")
+                        col8.info(f"⚡ 電費: HK$ {rc['elec_fee']}")
+                        col9.info(f"💰 租金: HK$ {default_rent}")
+
+                        # ➍ 總金額一行
+                        st.info(f"📘 合共: HK$ {rc['calculate_amt']}")
             else:
                 water_fee = ""
                 elec_fee = ""
