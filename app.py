@@ -344,22 +344,22 @@ elif main_mode == "📆 租金處理進度":
     else:
         st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成水電計算")
 
-        # ❷ 未收租（只有當全部計算完水電後才檢查）
-        if not unpaid_df.empty:
-            st.markdown("### ❌ 未收租名單")
-            cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
-            view_df = unpaid_df[cols].rename(columns={"每月固定租金":"應付租金"})
-            st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
-        else:
-            st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成收租")
+    # ❷ 未收租（只有當全部計算完水電後才檢查）
+    if not unpaid_df.empty:
+        st.markdown("### ❌ 未收租名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
+        view_df = unpaid_df[cols].rename(columns={"每月固定租金":"應付租金"})
+        st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
+    else:
+        st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成收租")
 
-            # ❸ 已收租但未入帳（只有當全部已收租後才檢查）
-            if not undeposited_df.empty:
-                st.markdown("### 🏦 已收租但尚未過數名單")
-                cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-                st.data_editor(undeposited_df[cols].set_index(undeposited_df.index + 1), use_container_width=True, disabled=True)
-            else:
-                st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
+        # ❸ 已收租但未入帳（只有當全部已收租後才檢查）
+        if not undeposited_df.empty:
+            st.markdown("### 🏦 已收租但尚未過數名單")
+            cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
+            st.data_editor(undeposited_df[cols].set_index(undeposited_df.index + 1), use_container_width=True, disabled=True)
+        else:
+            st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
@@ -459,13 +459,13 @@ elif main_mode == "📆 租金處理進度":
                         col1, col2, col3 = st.columns(3)
                         col1.info(f"💧 本月水錶: {float(curr_water_units)}")
                         col2.info(f"💧 上月水錶: {float(prev_water_units)}")
-                        col3.info(f"💧 每度水費: {float(trow['每度水費'])}")
+                        col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
 
                         # ➋ 電錶資訊一行
                         col4, col5, col6 = st.columns(3)
                         col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                         col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
-                        col6.info(f"⚡ 每度電費: {float(trow['每度電費'])}")
+                        col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
