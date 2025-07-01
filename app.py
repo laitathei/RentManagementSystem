@@ -329,7 +329,7 @@ elif main_mode == "📆 租金處理進度":
     undeposited_rooms = len(undeposited_df)
     total_rooms  = len(active_df)                     # 全部房間
 
-    col1, col2, col3, col4 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("📋 總租客數", total_rooms)
     col2.metric("🧮 已計算水電", calculated_rooms)
     col3.metric("✅ 已交租", paid_rooms)
@@ -361,26 +361,6 @@ elif main_mode == "📆 租金處理進度":
             else:
                 st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
 
-    # # ❶ 顯示未交租租客
-    # if not unpaid_df.empty:
-    #     st.markdown("### ❌ 未交租租客名單")
-    #     show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "每月固定租金"] if c in unpaid_df.columns]
-    #     view_df = unpaid_df[show_cols].rename(columns={"每月固定租金": "應付租金"})
-    #     st.data_editor(view_df.set_index(view_df.index + 2), use_container_width=True, disabled=True)
-    # else:
-    #     st.success(f"🥳 所有{selected_year} 年 {selected_month} 月租客都已完成收租")
-
-    # # ❷ 顯示已收租但未入帳租客
-    # if filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"].empty:
-    #     st.info(f"尚未有 {selected_year} 年 {selected_month} 月的收租紀錄")
-    # elif not undeposited_df.empty:
-    #     st.markdown("### 🏦 已收租但尚未過戶名單")
-    #     show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-    #     view_df2 = undeposited_df[show_cols]
-    #     st.data_editor(view_df2.set_index(view_df2.index + 1), use_container_width=True, disabled=True)
-    # else:
-    #     st.success(f"🥳 所有{selected_year} 年 {selected_month} 月已收租紀錄皆已完成過戶")
-
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
@@ -409,14 +389,6 @@ elif main_mode == "📆 租金處理進度":
             month = st.selectbox("月份", list(range(1, 13)), index=pd.Timestamp.now().month - 1)
 
             trow = unpaid_df.iloc[idx]                        # 取得該租客在 tenant_df 的資料
-            # prev_year, prev_month = (year - 1, 12) if month == 1 else (year, month - 1)
-            # matching_prev = rentflow_df[
-            #     (rentflow_df["租客姓名"] == name) &
-            #     (rentflow_df["單位地址"] == address) &
-            #     (rentflow_df["年度"] == prev_year) &
-            #     (rentflow_df["月份"] == prev_month)
-            # ]
-
             hist_df = rentflow_df[
                 (rentflow_df["租客姓名"] == name) &
                 (rentflow_df["單位地址"] == address) &
