@@ -431,6 +431,12 @@ elif main_mode == "📆 租金處理進度":
 
                 if "rent_calc" in st.session_state:
                     rc = st.session_state["rent_calc"]
+                    st.info(f"💧 本月水錶: HK$ {float(curr_water_units):,.0f}")
+                    st.info(f"💧 上月水錶: HK$ {float(prev_water_units):,.0f}")
+                    st.info(f"⚡ 本月電錶: HK$ {float(curr_elec_units):,.0f}")
+                    st.info(f"⚡ 上月電錶: HK$ {float(prev_elec_units):,.0f}")
+                    st.info(f"💧 每度水費: HK$ {float(trow["每度水費"]):,.0f}")
+                    st.info(f"⚡ 每度電費: HK$ {float(trow["每度電費"]):,.0f}")
                     st.info(f"💧 水費: HK$ {rc['water_fee']:,.0f}")
                     st.info(f"⚡ 電費: HK$ {rc['elec_fee']:,.0f}")
                     st.info(f"💰 租金: HK$ {default_rent:,.0f}")
