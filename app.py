@@ -293,7 +293,7 @@ elif main_mode == "📆 租金處理進度":
     ].copy()
 
     # 續租 = 一律要收
-    cond_renew = tenant_df["租約狀態"] == "續租"
+    cond_renew = active_df["租約狀態"] == "續租"
 
     # 新租 = 起租日在本月 1 號「之前」才要收(即首租期由下一月開始)
     cond_new   = (
@@ -350,45 +350,6 @@ elif main_mode == "📆 租金處理進度":
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
-        
-        # tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
-        # filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"]
-
-        # # 取得該月份的第一天
-        # month_start = pd.Timestamp(selected_year, selected_month, 1)
-
-        # # 只選擇租期已生效，且未到期的租客
-        # tenant_df["租約開始日"] = pd.to_datetime(tenant_df["租約開始日"], errors="coerce")
-        # tenant_df["租約結束日"] = pd.to_datetime(tenant_df["租約結束日"], errors="coerce")
-        # tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
-
-        # cond_renew = (
-        #     (tenant_df["租約狀態"] == "續租") &
-        #     (tenant_df["租約開始日"] < month_start) &                # 已開始
-        #     (
-        #         tenant_df["租約結束日"].isna() |                      # 沒有結束日
-        #         (tenant_df["租約結束日"] >= month_start)              # 或尚未到期
-        #     )
-        # )
-
-        # cond_new = (
-        #     (tenant_df["租約狀態"] != "續租") &
-        #     (tenant_df["租約開始日"] < month_start)
-        # )
-
-        # active_df = tenant_df[cond_renew | cond_new].copy()
-
-        # active_df = tenant_df[
-        #     (tenant_df["租約開始日"] < month_start) &
-        #     ((tenant_df["租約結束日"].isna()) | (tenant_df["租約狀態"] == "續租") | (tenant_df["租約結束日"] >= month_start))
-        # ]
-
-        # # 計算已交租租客 key
-        # filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"]
-        # paid_keys = set(filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]["key"])
-
-        # # 從應收租的租客中，排除已交租的，得到「應收但未交」
-        # unpaid_df = active_df[~active_df["key"].isin(paid_keys)]
 
         if unpaid_df.empty:
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
