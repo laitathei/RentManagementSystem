@@ -344,7 +344,7 @@ elif main_mode == "📆 租金處理進度":
     # ❷ 顯示已收租但未入帳租客
     if filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"].empty:
         st.info(f"尚未有 {selected_year} 年 {selected_month} 月的收租紀錄")
-    elif received_not_deposited_df.empty:
+    elif not received_not_deposited_df.empty:
         st.markdown("### 🏦 已收租但尚未過戶名單")
         show_cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in received_not_deposited_df.columns]
         view_df2 = received_not_deposited_df[show_cols]
@@ -359,9 +359,6 @@ elif main_mode == "📆 租金處理進度":
         tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
         filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"]
 
-        # paid_keys = set(filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]["key"])
-        # unpaid_df = tenant_df[~tenant_df["key"].isin(paid_keys)]
-
         # 取得該月份的第一天
         month_start = pd.Timestamp(selected_year, selected_month, 1)
 
@@ -371,7 +368,7 @@ elif main_mode == "📆 租金處理進度":
         tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
 
         active_df = tenant_df[
-            (tenant_df["租約開始日"] <= month_start) &
+            (tenant_df["租約開始日"] < month_start) &
             ((tenant_df["租約結束日"].isna()) | (tenant_df["租約狀態"] == "續租") | (tenant_df["租約結束日"] >= month_start))
         ]
 
@@ -445,24 +442,28 @@ elif main_mode == "📆 租金處理進度":
                     elec_fee = 0
 
                 calculate_amt = default_rent + water_fee + elec_fee
+                water_elec_fee = water_fee + elec_fee
                 calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
                 st.info(f"💧 水費: HK$ {water_fee:,.0f}")
                 st.info(f"⚡ 電費: HK$ {elec_fee:,.0f}")
                 st.info(f"💰 租金:HK$ {default_rent:,.0f}")
                 st.info(f"🔢 合共: HK$ {calculate_amt:,.0f}")
             else:
+                water_fee = ""
+                elec_fee = ""
+                water_elec_fee = ""
                 calculate_date = ""
-                total_payable = ""
+                calculate_amt = ""
 
             if receive_done:
                 receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
-                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=total_payable, key="receive_amt")
+                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=default_rent, key="receive_amt")
             else:
                 receive_date = ""
                 receive_amt = ""
             if deposit_done:
                 deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=total_payable, key="deposit_amt")
+                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=calculate_amt, key="deposit_amt")
             else:
                 deposit_date = ""
                 deposit_amt = ""
@@ -483,7 +484,7 @@ elif main_mode == "📆 租金處理進度":
                         phone, name, address, year, month,
                         str(calculate_date) if calculate_done else "",
                         calculate_done,
-                        calculate_amt  if calculate_done  else "",
+                        water_elec_fee  if calculate_done  else "",
                         str(receive_date) if receive_done else "",
                         receive_done,
                         receive_amt  if receive_done  else "",
@@ -492,6 +493,7 @@ elif main_mode == "📆 租金處理進度":
                         deposit_amt  if deposit_done else "",
                         water_units, prev_water_units, water_fee,
                         elec_units, prev_elec_units, elec_fee,
+                        calculate_amt,
                         ts, who
                     ]
                     sheet_rentflow.append_row(row, value_input_option="RAW")
@@ -513,14 +515,14 @@ elif main_mode == "📆 租金處理進度":
             row_data = rentflow_df.loc[idx]
             gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
-            calculate_done  = st.checkbox("🧮 已計算費用", value=str(row_data["已計算費用"]).upper() == "TRUE")
+            calculate_done  = st.checkbox("🧮 已計算費用", value=str(row_data["應付金額"]).upper() == "TRUE")
             receive_done = st.checkbox("✅ 已收租", value=str(row_data["已收取租金"]).upper() == "TRUE")
             deposit_done = st.checkbox("🏦 已入帳", value=str(row_data["已存入租金"]).upper() == "TRUE")
 
             with st.form("edit_rentflow_form"):
                 if calculate_done:
                     calculate_date = st.date_input("📅 計算日期", value=pd.to_datetime(row_data["計算費用日期"]).date() if row_data["計算費用日期"] else pd.Timestamp.now().date(), key="calculate_date_in")
-                    calculate_amt  = st.number_input("💰 計算金額", min_value=0.0, value=float(row_data["計算金額"]) if row_data["計算金額"] else 0.0, key="calculate_amt")
+                    calculate_amt  = st.number_input("💰 計算金額", min_value=0.0, value=float(row_data["應付金額"]) if row_data["應付金額"] else 0.0, key="calculate_amt")
                 else:
                     calculate_date = ""
                     calculate_amt = ""
@@ -551,6 +553,7 @@ elif main_mode == "📆 租金處理進度":
                         str(deposit_date) if deposit_done else "",
                         str(deposit_done).upper(),
                         deposit_amt if deposit_done else "",
+                        calculate_amt, 
                         ts, who
                     ]])
                     st.success("✅ 已成功修改紀錄")
