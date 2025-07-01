@@ -316,7 +316,7 @@ elif main_mode == "📆 租金處理進度":
     paid_rooms = len(paid_df)                         # ← 行數就是房間數
     paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
 
-    deposit_df = filtered_df[filtered_df["已存入租金"].astype(str).str.upper() == "TRUE"]["key"]
+    deposit_df = filtered_df[filtered_df["已存入租金"].astype(str).str.upper() == "TRUE"]
     deposit_keys = set(deposit_df["key"])
 
     total_rooms  = len(active_df)                     # 全部房間
