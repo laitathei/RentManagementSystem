@@ -415,7 +415,7 @@ elif main_mode == "📆 租金處理進度":
                 curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_water_units", 0.0), key="curr_water_units")
                 curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_elec_units", 0.0), key="curr_elec_units")
 
-                if st.form_submit_button("🔢 計算"):
+                if st.form_submit_button("🔢 計算", disabled=not calculate_done, use_container_width=True):
                     water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
                     elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
 
@@ -498,12 +498,15 @@ elif main_mode == "📆 租金處理進度":
                 deposit_amt = ""
 
             calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, st.session_state.get("curr_water_units", 0.0), st.session_state.get("curr_elec_units", 0.0)))
-
-            if not calc_ok and calculate_done:
+            save_btn_ph = st.empty()
+            if calc_ok and calculate_done:
+                save_pressed = save_btn_ph.form_submit_button("✅ 新增", use_container_width=True )
+            else:
+                save_pressed = False
                 st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
                 st.stop()
 
-            if calc_ok and st.form_submit_button("✅ 新增"):
+            if save_pressed:
                 water_units     = rc.get("water_units", "")
                 prev_water_units = prev_water_units          # 仍沿用先前計算好的舊度數
                 water_fee       = rc.get("water_fee", "")
