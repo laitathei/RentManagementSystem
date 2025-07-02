@@ -506,6 +506,10 @@ elif main_mode == "📆 租金處理進度":
                             col1.info(f"💧 本月水錶: {float(curr_water_units)}")
                             col2.info(f"💧 上月水錶: {float(prev_water_units)}")
                             col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
+                        else:
+                            col1, col2= st.columns(2)
+                            col1.info(f"💧 fix本月水錶: {curr_water_units}")
+                            col2.info(f"💧 fix上月水錶: {prev_water_units}")
 
                         # ➋ 電錶資訊一行
                         if elec_mode == "per_unit":
@@ -513,6 +517,10 @@ elif main_mode == "📆 租金處理進度":
                             col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                             col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
+                        else:
+                            col1, col2= st.columns(2)
+                            col1.info(f"💧 fix本月電錶: {curr_elec_units}")
+                            col2.info(f"💧 fix上月電錶: {prev_elec_units}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
