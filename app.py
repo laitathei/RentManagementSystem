@@ -481,7 +481,8 @@ elif main_mode == "📆 租金處理進度":
                         elec_fee = "N/A"
                         elec_units = "N/A"
 
-                    calculate_amt = default_rent + water_fee + elec_fee
+                    to_float_safe = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else 0
+                    calculate_amt = default_rent + to_float_safe(water_fee) + to_float_safe(elec_fee)
                     water_elec_fee = water_fee + elec_fee
 
                     # ⬇︎ 把結果暫存，供後面「新增」使用
@@ -505,9 +506,6 @@ elif main_mode == "📆 租金處理進度":
                             col1.info(f"💧 本月水錶: {float(curr_water_units)}")
                             col2.info(f"💧 上月水錶: {float(prev_water_units)}")
                             col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
-                        elif water_mode == "fixed":
-                            col1 = st.columns(1)[0]
-                            col1.info(f"💧 固定水費: HK$ {float(trow['固定水費'])}")
 
                         # ➋ 電錶資訊一行
                         if elec_mode == "per_unit":
@@ -515,10 +513,7 @@ elif main_mode == "📆 租金處理進度":
                             col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                             col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
-                        elif elec_mode == "fixed":
-                            col4 = st.columns(1)[0]
-                            col4.info(f"⚡ 固定電費: HK$ {float(trow['固定電費'])}")
-
+                            
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
                         col7.info(f"💧 水費: HK$ {rc['water_fee']}")
