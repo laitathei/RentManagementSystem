@@ -313,8 +313,8 @@ elif main_mode == "📆 租金處理進度":
     uncalculated_df = active_df[~active_df["key"].isin(calculated_keys)]
     uncalculated_df = (uncalculated_df
         .assign(sheet_row=lambda d: d["key"].map(order_map))
-        .sort_values("sheet_row")
-        .set_index("sheet_row")          # <<── index 就是 9‧10‧12…
+        .sort_values("索引")
+        .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
 
     paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
@@ -324,8 +324,8 @@ elif main_mode == "📆 租金處理進度":
     unpaid_df = active_df[active_df["key"].isin(calculated_keys) & ~active_df["key"].isin(paid_keys)]
     unpaid_df = (unpaid_df
         .assign(sheet_row=lambda d: d["key"].map(order_map))
-        .sort_values("sheet_row")
-        .set_index("sheet_row")          # <<── index 就是 9‧10‧12…
+        .sort_values("索引")
+        .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
     unpaid_rooms = len(unpaid_df)           # 未交租房間數
     
@@ -336,8 +336,8 @@ elif main_mode == "📆 租金處理進度":
     undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
     undeposited_df = (undeposited_df
         .assign(sheet_row=lambda d: d["key"].map(order_map))
-        .sort_values("sheet_row")
-        .set_index("sheet_row")          # <<── index 就是 9‧10‧12…
+        .sort_values("索引")
+        .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
     undeposited_rooms = len(undeposited_df)
     total_rooms  = len(active_df)                     # 全部房間
@@ -354,9 +354,7 @@ elif main_mode == "📆 租金處理進度":
     else: # 尚未計算水電
         st.markdown("### 🧮 尚未計算水電名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in uncalculated_df.columns]
-        view_df = uncalculated_df.set_index("sheet_row", drop=False)
-        view_df.index.name = ""
-        st.data_editor(view_df[["租客姓名", "租客電話", "單位地址"]], use_container_width=True, disabled=True)
+        st.data_editor(uncalculated_df[cols], use_container_width=True, disabled=True)
 
     if unpaid_df.empty and uncalculated_df.empty: # 已計算水電和已收租
         st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成收租")
@@ -367,18 +365,14 @@ elif main_mode == "📆 租金處理進度":
         unpaid_view = (unpaid_df.merge(tmp, on="key", how="left"))
         unpaid_view["應付金額"] = (pd.to_numeric(unpaid_view["每月固定租金"], errors="coerce").fillna(0) + unpaid_view["水電金額"])
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "應付金額"] if c in unpaid_df.columns]
-        view_df = uncalculated_df.set_index("sheet_row", drop=False)
-        view_df.index.name = ""
-        st.data_editor(view_df[["租客姓名", "租客電話", "單位地址", "應付金額"]], use_container_width=True, disabled=True)
+        st.data_editor(unpaid_df[cols], use_container_width=True, disabled=True)
 
     if unpaid_df.empty and uncalculated_df.empty and undeposited_df.empty: # 已計算水電和已收租和已過戶
         st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
     else: # 已收租但未入帳
         st.markdown("### 🏦 已收租但尚未過數名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-        view_df = undeposited_df.set_index("sheet_row", drop=False)
-        view_df.index.name = ""
-        st.data_editor(view_df[["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"]], use_container_width=True, disabled=True)
+        st.data_editor(undeposited_df[cols], use_container_width=True, disabled=True)
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
