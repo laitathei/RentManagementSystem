@@ -380,9 +380,9 @@ elif main_mode == "📆 租金處理進度":
         address = pending_df.iloc[idx]["單位地址"]
         default_rent = float(pending_df.iloc[idx]["每月固定租金"])
 
-        calculate_done  = st.checkbox("🧮 已計算費用", key="calculate_done_out")
-        receive_done  = st.checkbox("✅ 已收租", key="receive_done_out")
-        deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out")
+        calculate_done  = st.checkbox("🧮 已計算費用", key="calculate_done_out", on_change=st.session_state.pop("rent_calc", None))
+        receive_done  = st.checkbox("✅ 已收租", key="receive_done_out", on_change=st.session_state.pop("rent_calc", None))
+        deposit_done  = st.checkbox("🏦 已入帳", key="deposit_done_out", on_change=st.session_state.pop("rent_calc", None))
 
         with st.form("add_rentflow_form"):
             phone = st.text_input("租客電話", value=default_phone, disabled=True)
@@ -412,8 +412,8 @@ elif main_mode == "📆 租金處理進度":
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
 
             if calculate_done:
-                curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0)
-                curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=0.0)
+                curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=0.0, key="curr_water_units", on_change=st.session_state.pop("rent_calc", None))
+                curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=0.0, key="curr_elec_units", on_change=st.session_state.pop("rent_calc", None))
 
                 if st.form_submit_button("🔢 計算"):
                     water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
@@ -436,7 +436,6 @@ elif main_mode == "📆 租金處理進度":
                         elec_fee = 0
 
                     calculate_amt = default_rent + water_fee + elec_fee
-                    default_rent = calculate_amt
                     water_elec_fee = water_fee + elec_fee
                     calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
 
@@ -483,14 +482,16 @@ elif main_mode == "📆 租金處理進度":
                 st.session_state.pop("rent_calc", None)   # 取消勾選時清空
 
             if receive_done:
+                init_receive = st.session_state.get("rent_calc", {}).get("calculate_amt", default_rent)
                 receive_date = st.date_input("📅 收租日期", value=pd.Timestamp.now().date(), key="receive_date_in")
-                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=default_rent, key="receive_amt")
+                receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=init_receive, key="receive_amt")
             else:
                 receive_date = ""
                 receive_amt = ""
             if deposit_done:
+                init_receive = st.session_state.get("rent_calc", {}).get("calculate_amt", default_rent)
                 deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=default_rent, key="deposit_amt")
+                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=init_receive, key="deposit_amt")
             else:
                 deposit_date = ""
                 deposit_amt = ""
@@ -545,6 +546,8 @@ elif main_mode == "📆 租金處理進度":
                     ]
                     sheet_rentflow.append_row(row, value_input_option="RAW")
                     st.success("✅ 已成功新增租金紀錄")
+                    for k in ("curr_water_units", "curr_elec_units"):
+                        st.session_state.pop(k, None)   # 刪掉就會回到 default value
                     st.session_state.pop("rent_calc", None)
                     st.rerun()
 
