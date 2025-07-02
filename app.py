@@ -450,8 +450,10 @@ elif main_mode == "📆 租金處理進度":
                         water_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
                     elif water_mode == "fixed":
                         water_fee = float(trow["固定水費"])
+                        water_units = "N/A"
                     else:
                         water_fee = 0
+                        water_units = "N/A"
 
                     # ③ 計算電費
                     if elec_mode == "per_unit":
@@ -460,8 +462,10 @@ elif main_mode == "📆 租金處理進度":
                         elec_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
                     elif elec_mode == "fixed":
                         elec_fee = float(trow["固定電費"])
+                        elec_units = "N/A"
                     else:
                         elec_fee = 0
+                        elec_units = "N/A"
 
                     calculate_amt = default_rent + water_fee + elec_fee
                     water_elec_fee = water_fee + elec_fee
