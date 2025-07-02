@@ -640,8 +640,8 @@ elif main_mode == "📆 租金處理進度":
                 filtered_df["單位地址"] + "｜" +
                 filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
-            choice = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
-            idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
+            sel_opt = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
+            idx = rentflow_df[rentflow_df["選項"] == sel_opt].index[0]
             row_data = rentflow_df.loc[idx]
             gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
@@ -797,25 +797,42 @@ elif main_mode == "📆 租金處理進度":
                     deposit_date = ""
                     deposit_amt = ""
 
-                # if receive_done:
-                #     receive_date = st.date_input("📅 收租日期", value=pd.to_datetime(row_data["收取租金日期"]).date() if row_data["收取租金日期"] else pd.Timestamp.now().date(), key="receive_date_in")
-                #     receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="receive_amt")
-                # else:
-                #     receive_date = ""
-                #     receive_amt = ""
+                # ───── 小工具：把值標準化成可比對的字串 ─────
+                norm = lambda v: "N/A" if v in (None, "", "N/A") else str(v)
 
-                # if deposit_done:
-                #     deposit_date = st.date_input("📅 過數日期", value=pd.to_datetime(row_data["存入租金日期"]).date() if row_data["存入租金日期"] else pd.Timestamp.now().date(), key="deposit_date_in")
-                #     deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="deposit_amt") # 理論上收租金額=過戶金額
-                # else:
-                #     deposit_date = ""
-                #     deposit_amt = ""
+                # ① 每次『租客 selector』改變時，把舊的輸入清掉
+                if "last_selector" not in st.session_state or st.session_state.last_selector != sel_opt:
+                    for k in ("curr_water_units", "curr_elec_units", "modify_calc"):
+                        st.session_state.pop(k, None)
+                    st.session_state.last_selector = sel_opt      # 記住這次選的人
+
+                # ② 已計算費用 = True／False 時，也要同步清掉舊的計算
+                if not calculate_done:
+                    for k in ("curr_water_units", "curr_elec_units", "modify_calc"):
+                        st.session_state.pop(k, None)
+
+                # ③ 取得目前輸入（沒有就給 "N/A"）
+                cur_w = norm(st.session_state.get("curr_water_units", "N/A"))
+                cur_e = norm(st.session_state.get("curr_elec_units", "N/A"))
+
+                # ④ 檢查試算是否仍然有效
+                rc = st.session_state.get("modify_calc")
+                calc_ok = (
+                    calculate_done and
+                    rc and
+                    (selected_year, selected_month, norm(rc["inputs"][2]), norm(rc["inputs"][3])) ==
+                    (selected_year, selected_month, cur_w, cur_e)
+                )
+
+                if not calc_ok and calculate_done:
+                    st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
+                    st.stop()
 
                 if st.form_submit_button("💾 儲存修改"):
                     tz_hk = pytz.timezone("Asia/Hong_Kong")
                     ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
                     who = st.session_state.get("user_name", "unknown")
-                    sheet_rentflow.update(f"F{gs_row}:M{gs_row}", [[
+                    sheet_rentflow.update(f"F{gs_row}:W{gs_row}", [[
                         str(calculate_date) if calculate_done else "",
                         calculate_done,
                         water_elec_fee  if calculate_done  else "",
