@@ -522,8 +522,8 @@ elif main_mode == "📆 租金處理進度":
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
                         else:
                             col1, col2= st.columns(2)
-                            col1.info(f"💧 fix本月電錶: {curr_elec_units}")
-                            col2.info(f"💧 fix上月電錶: {prev_elec_units}")
+                            col1.info(f"⚡ fix本月電錶: {curr_elec_units}")
+                            col2.info(f"⚡ fix上月電錶: {prev_elec_units}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
@@ -556,8 +556,33 @@ elif main_mode == "📆 租金處理進度":
                 deposit_date = ""
                 deposit_amt = ""
 
-            calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, sig_val(st.session_state.get("curr_water_units", "N/A")), sig_val(st.session_state.get("curr_elec_units", "N/A"))))
+            # ───── 小工具：把值標準化成可比對的字串 ─────
+            norm = lambda v: "N/A" if v in (None, "", "N/A") else str(v)
 
+            # ① 每次『租客 selector』改變時，把舊的輸入清掉
+            if "last_selector" not in st.session_state or st.session_state.last_selector != sel_opt:
+                for k in ("curr_water_units", "curr_elec_units", "rent_calc"):
+                    st.session_state.pop(k, None)
+                st.session_state.last_selector = sel_opt      # 記住這次選的人
+
+            # ② 已計算費用 = True／False 時，也要同步清掉舊的計算
+            if not calculate_done:
+                for k in ("curr_water_units", "curr_elec_units", "rent_calc"):
+                    st.session_state.pop(k, None)
+
+            # ③ 取得目前輸入（沒有就給 "N/A"）
+            cur_w = norm(st.session_state.get("curr_water_units", "N/A"))
+            cur_e = norm(st.session_state.get("curr_elec_units", "N/A"))
+
+            # ④ 檢查試算是否仍然有效
+            rc = st.session_state.get("rent_calc")
+            calc_ok = (
+                calculate_done and
+                rc and
+                (year, month, norm(rc["inputs"][2]), norm(rc["inputs"][3])) ==
+                (year, month, cur_w, cur_e)
+            )
+            
             if not calc_ok and calculate_done:
                 st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
                 st.stop()
