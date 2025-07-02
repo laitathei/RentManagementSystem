@@ -636,14 +636,13 @@ elif main_mode == "📆 租金處理進度":
                 filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
             choice = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
-            idx = filtered_df[filtered_df["選項"] == choice].index[0]
-            row_data = filtered_df.loc[idx]
+            idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
+            row_data = rentflow_df.loc[idx]
             gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
-            name = choice.split("｜")[0]
-            address = filtered_df.iloc[idx]["單位地址"]
-            idx = filtered_df["選項"].tolist().index(choice)
-            trow = filtered_df.iloc[idx]
+            name = row_data["租客姓名"]
+            address = row_data["單位地址"]
+            trow = tenant_df[(tenant_df["租客姓名"] == name) & (tenant_df["單位地址"] == address)].iloc[0]
             if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
                 water_mode = "per_unit"          # 按度數計費
             elif str(trow["固定水費"]).upper() != "N/A" and str(trow["固定水費"]) != "":
