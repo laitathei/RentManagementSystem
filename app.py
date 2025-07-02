@@ -306,125 +306,58 @@ elif main_mode == "📆 租金處理進度":
     active_df["key"]   = active_df["租客姓名"] + "｜" + active_df["單位地址"].astype(str)
     filtered_df["key"] = filtered_df["租客姓名"] + "｜" + filtered_df["單位地址"].astype(str)
     
-    # 1️⃣ 把三個旗標統一轉成 bool，避免 NaN / 空字串
-    flag_cols = ["已計算水電", "已收取租金", "已存入租金"]
-    flags = (filtered_df[["key"] + flag_cols]
-            .replace({"TRUE": True, "FALSE": False, "": False})
-            .fillna(False))
-    flags[flag_cols] = flags[flag_cols].astype(bool)
+    calculated_df = filtered_df[filtered_df["已計算水電"].astype(str).str.upper() == "TRUE"]
+    calculated_rooms = len(calculated_df)
+    calculated_keys  = set(calculated_df["key"])
+    # ① 未計算 = 月內「應收」但 key 不在 calc_keys
+    uncalculated_df = active_df[~active_df["key"].isin(calculated_keys)]
 
-    # 2️⃣ 合併到「本月應收租」清單，沒有紀錄的房間 → 旗標全 False
-    status_df = active_df.merge(flags, on="key", how="left").fillna(False)
-
-    # 3️⃣ 四大狀態一次分群（互斥）
-    uncalculated_df          = status_df[~status_df["已計算水電"]]
-    calculated_not_paid_df   = status_df[ status_df["已計算水電"] & ~status_df["已收取租金"] ]
-    paid_not_deposited_df    = status_df[ status_df["已收取租金"] & ~status_df["已存入租金"] ]
-    settled_df               = status_df[ status_df["已存入租金"] ]                 # 可省略顯示
-
-    # 4️⃣ 大數據 (metric)
-    total_rooms     = len(status_df)
-    calculated_rooms= len(status_df[ status_df["已計算水電"] ])
-    paid_rooms      = len(status_df[ status_df["已收取租金"] ])
-    deposited_rooms = len(status_df[ status_df["已存入租金"] ])
+    paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
+    paid_rooms = len(paid_df)                         # ← 行數就是房間數
+    paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
+    # ② 未收租  = 已經計算 (key 在 calc_keys) 但還沒 paid
+    unpaid_df = active_df[active_df["key"].isin(calculated_keys) & ~active_df["key"].isin(paid_keys)]
+    unpaid_rooms = len(unpaid_df)           # 未交租房間數
+    
+    deposit_df = filtered_df[filtered_df["已存入租金"].astype(str).str.upper() == "TRUE"]
+    deposited_rooms = len(deposit_df)
+    deposit_keys = set(deposit_df["key"])
+    # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
+    undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
+    undeposited_rooms = len(undeposited_df)
+    total_rooms  = len(active_df)                     # 全部房間
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("📋 總租客數", total_rooms)
     col2.metric("🧮 已計算水電", calculated_rooms)
     col3.metric("✅ 已交租", paid_rooms)
     col4.metric("🏦 已入帳", deposited_rooms)
+    st.data_editor(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True, disabled=True)
 
-    # calculated_df = filtered_df[filtered_df["已計算水電"].astype(str).str.upper() == "TRUE"]
-    # calculated_rooms = len(calculated_df)
-    # calculated_keys  = set(calculated_df["key"])
-    # # ① 未計算 = 月內「應收」但 key 不在 calc_keys
-    # uncalculated_df = active_df[~active_df["key"].isin(calculated_keys)]
+    if uncalculated_df.empty: # 已計算水電
+        st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成水電計算")
+    else: # 尚未計算水電
+        st.markdown("### 🧮 尚未計算水電名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in uncalculated_df.columns]
+        st.data_editor(uncalculated_df[cols].set_index(uncalculated_df.index + 1), use_container_width=True, disabled=True)
 
-    # paid_df   = filtered_df[filtered_df["已收取租金"].astype(str).str.upper() == "TRUE"]
-    # paid_rooms = len(paid_df)                         # ← 行數就是房間數
-    # paid_keys  = set(paid_df["key"])                  # ← 用來做未交租比對
-    # # ② 未收租  = 已經計算 (key 在 calc_keys) 但還沒 paid
-    # unpaid_df = active_df[active_df["key"].isin(calculated_keys) & ~active_df["key"].isin(paid_keys)]
-    # unpaid_rooms = len(unpaid_df)           # 未交租房間數
-    
-    # deposit_df = filtered_df[filtered_df["已存入租金"].astype(str).str.upper() == "TRUE"]
-    # deposited_rooms = len(deposit_df)
-    # deposit_keys = set(deposit_df["key"])
-    # # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
-    # undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
-    # undeposited_rooms = len(undeposited_df)
-    # total_rooms  = len(active_df)                     # 全部房間
-
-    # col1, col2, col3, col4 = st.columns(4)
-    # col1.metric("📋 總租客數", total_rooms)
-    # col2.metric("🧮 已計算水電", calculated_rooms)
-    # col3.metric("✅ 已交租", paid_rooms)
-    # col4.metric("🏦 已入帳", deposited_rooms)
-    # st.data_editor(filtered_df.drop(columns=["key"]).set_index(pd.RangeIndex(start=1, stop=len(filtered_df.drop(columns=["key"]))+1)), use_container_width=True, disabled=True)
-
-    # ────────────────── ❶ 未計算水電清單 ──────────────────
-    st.markdown("### 🧮 尚未計算水電名單")
-    if uncalculated_df.empty:
-        st.success("✓ 無待計算項目")
-    else:
-        _cols = ["租客姓名", "租客電話", "單位地址"]
-        st.data_editor(uncalculated_df[_cols].set_index(uncalculated_df.index+1),
-                    disabled=True, use_container_width=True)
-
-    # ────────────────── ❷ 已計算水電但未收租清單 ──────────────────
-    st.markdown("### ❌ 已計算水電但未收租名單")
-    if calculated_not_paid_df.empty:
-        st.success("✓ 無待收租項目")
-    else:
-        # 把水電金額併過來算「應付金額」
+    if unpaid_df.empty and uncalculated_df.empty: # 已計算水電和已收租
+        st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成收租")
+    else: # 已計算水電但未收租
+        st.markdown("### ❌ 已計算水電但尚未收租名單")
         tmp = filtered_df[["key", "水電金額"]].copy()
         tmp["水電金額"] = pd.to_numeric(tmp["水電金額"], errors="coerce").fillna(0)
-        view = calculated_not_paid_df.merge(tmp, on="key", how="left")
-        view["應付金額"] = (
-            pd.to_numeric(view["每月固定租金"], errors="coerce").fillna(0)
-            + view["水電金額"]
-        )
-        _cols = ["租客姓名", "租客電話", "單位地址", "應付金額"]
-        st.data_editor(view[_cols].set_index(view.index+1),
-                    disabled=True, use_container_width=True)
+        unpaid_view = (unpaid_df.merge(tmp, on="key", how="left"))
+        unpaid_view["應付金額"] = (pd.to_numeric(unpaid_view["每月固定租金"], errors="coerce").fillna(0) + unpaid_view["水電金額"])
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址", "應付金額"] if c in unpaid_df.columns]
+        st.data_editor(unpaid_df[cols].set_index(unpaid_df.index + 1), use_container_width=True, disabled=True)
 
-    # ────────────────── ❸ 已收租但尚未過數清單 ──────────────────
-    st.markdown("### 🏦 已收租但尚未過數名單")
-    if paid_not_deposited_df.empty:
-        st.success("✓ 無待過數項目")
-    else:
-        _cols = ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"]
-        st.data_editor(paid_not_deposited_df[_cols].set_index(paid_not_deposited_df.index+1),
-                    disabled=True, use_container_width=True)
-
-    # # ① 尚未計算水電
-    # if not uncalculated_df.empty:
-    #     st.markdown("### 🧮 尚未計算水電名單")
-    #     cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in uncalculated_df.columns]
-    #     st.data_editor(uncalculated_df[cols].set_index(uncalculated_df.index + 1), use_container_width=True, disabled=True)
-    # else:
-    #     st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成水電計算")
-
-    # # ② 已計算水電但未收租
-    # if not calculated_df.empty:
-    #     if not unpaid_df.empty:
-    #         st.markdown("### ❌ 已計算水電但尚未收租名單")
-    #         tmp = filtered_df[["key", "水電金額"]].copy()
-    #         tmp["水電金額"] = pd.to_numeric(tmp["水電金額"], errors="coerce").fillna(0)
-    #         unpaid_view = (unpaid_df.merge(tmp, on="key", how="left"))
-    #         unpaid_view["應付金額"] = (pd.to_numeric(unpaid_view["每月固定租金"], errors="coerce").fillna(0) + unpaid_view["水電金額"])
-    #         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "應付金額"] if c in unpaid_df.columns]
-    #         st.data_editor(unpaid_df[cols].set_index(unpaid_df.index + 1), use_container_width=True, disabled=True)
-    #     else:
-    #         st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成收租")
-
-    # # ❸ 已收租但未入帳（只有當全部已收租後才檢查）
-    # if not undeposited_df.empty:
-    #     st.markdown("### 🏦 已收租但尚未過數名單")
-    #     cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-    #     st.data_editor(undeposited_df[cols].set_index(undeposited_df.index + 1), use_container_width=True, disabled=True)
-    # else:
-    #     st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
+    if unpaid_df.empty and uncalculated_df.empty and undeposited_df.empty: # 已計算水電和已收租和已過戶
+        st.success(f"🥳 所有 {selected_year} 年 {selected_month} 月租客都已完成過戶")
+    else: # 已收租但未入帳
+        st.markdown("### 🏦 已收租但尚未過數名單")
+        cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
+        st.data_editor(undeposited_df[cols].set_index(undeposited_df.index + 1), use_container_width=True, disabled=True)
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
@@ -432,7 +365,7 @@ elif main_mode == "📆 租金處理進度":
 
         # ① 先抓出『尚未入帳』(deposit = FALSE) 的租客
         #    邏輯：在「本月份應收(active_df)」裡，但 key 不在 deposit_keys
-        pending_df = status_df[~status_df["已存入租金"]]          # ← 關鍵修改
+        pending_df = active_df[~active_df["key"].isin(deposit_keys)]
 
         if pending_df.empty:
             st.info("🥳 所有租客都已繳交該月份租金，無需新增紀錄。")
