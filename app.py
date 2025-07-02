@@ -635,6 +635,12 @@ elif main_mode == "📆 租金處理進度":
                 filtered_df["單位地址"] + "｜" +
                 filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
+            rentflow_df["選項"] = (
+                rentflow_df["租客姓名"] + "｜"
+                + rentflow_df["單位地址"] + "｜"
+                + rentflow_df["年度"].astype(str) + "-"
+                + rentflow_df["月份"].astype(str).str.zfill(2)
+            )
             choice = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
             idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
             row_data = rentflow_df.loc[idx]
