@@ -378,8 +378,6 @@ elif main_mode == "📆 租金處理進度":
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
 
-        # ① 先抓出『尚未入帳』(deposit = FALSE) 的租客
-        #    邏輯：在「本月份應收(active_df)」裡，但 key 不在 deposit_keys
         pending_df = active_df[~active_df["key"].isin(deposit_keys)]
 
         if pending_df.empty:
@@ -629,42 +627,185 @@ elif main_mode == "📆 租金處理進度":
 
     elif sub_mode == "✏️ 更改租金紀錄":
         st.subheader("✏️ 更改租金紀錄")
-        if rentflow_df.empty:
-            st.info("目前尚無紀錄可修改")
+        if filtered_df.empty:
+            st.info(f"目前沒有 {selected_year} 年 {selected_month} 月的紀錄可修改")
         else:
-            rentflow_df["選項"] = (
-                rentflow_df["租客姓名"] + "｜" +
-                rentflow_df["單位地址"] + "｜" +
-                rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
+            filtered_df["選項"] = (
+                filtered_df["租客姓名"] + "｜" +
+                filtered_df["單位地址"] + "｜" +
+                filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
-            choice = st.selectbox("選擇要修改的紀錄", rentflow_df["選項"].tolist())
-            idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
-            row_data = rentflow_df.loc[idx]
+            choice = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
+            idx = filtered_df[filtered_df["選項"] == choice].index[0]
+            row_data = filtered_df.loc[idx]
             gs_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
-            calculate_done  = st.checkbox("🧮 已計算費用", value=str(row_data["應付金額"]).upper() == "TRUE")
+            name = choice.split("｜")[0]
+            address = filtered_df.iloc[idx]["單位地址"]
+            idx = filtered_df["選項"].tolist().index(choice)
+            trow = filtered_df.iloc[idx]
+            if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
+                water_mode = "per_unit"          # 按度數計費
+            elif str(trow["固定水費"]).upper() != "N/A" and str(trow["固定水費"]) != "":
+                water_mode = "fixed"             # 固定金額
+            else:
+                water_mode = "none"              # 不代收
+
+            if str(trow["每度電費"]).upper() != "N/A" and str(trow["每度電費"]) != "":
+                elec_mode = "per_unit"          # 按度數計費
+            elif str(trow["固定電費"]).upper() != "N/A" and str(trow["固定電費"]) != "":
+                elec_mode = "fixed"             # 固定金額
+            else:
+                elec_mode = "none"              # 不代收
+
+            calculate_done  = st.checkbox("🧮 已計算費用", value=str(row_data["已計算水電"]).upper() == "TRUE")
             receive_done = st.checkbox("✅ 已收租", value=str(row_data["已收取租金"]).upper() == "TRUE")
             deposit_done = st.checkbox("🏦 已入帳", value=str(row_data["已存入租金"]).upper() == "TRUE")
+            
+            hist_df = rentflow_df[
+                (rentflow_df["租客姓名"] == name) &
+                (rentflow_df["單位地址"] == address) &
+                (
+                    (rentflow_df["年度"] < selected_year) |
+                    ((rentflow_df["年度"] == selected_year) & (rentflow_df["月份"] < selected_month))
+                )
+            ]
+
+            # ➋ 取出最近一筆（年度、月份都最大的那行）
+            to_number_or_na = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else v
+            if not hist_df.empty:
+                # 先按 年度、月份 由大到小排序，再取第一筆
+                prev_row = hist_df.sort_values(["年度", "月份"], ascending=False).iloc[0]
+                prev_water_units = to_number_or_na(prev_row["本月水錶度數"])
+                prev_elec_units  = to_number_or_na(prev_row["本月電錶度數"])
+            else:
+                # 找不到任何舊紀錄，就用租客資料的「起始錶度數」
+                prev_water_units = to_number_or_na(trow["起始水錶度數"])
+                prev_elec_units  = to_number_or_na(trow["起始電錶度數"])
 
             with st.form("edit_rentflow_form"):
+                sig_val = lambda v: "N/A" if (v is None or (isinstance(v, str) and v.strip() == "")) else str(v)
                 if calculate_done:
-                    calculate_date = st.date_input("📅 計算日期", value=pd.to_datetime(row_data["計算費用日期"]).date() if row_data["計算費用日期"] else pd.Timestamp.now().date(), key="calculate_date_in")
-                    calculate_amt  = st.number_input("💰 計算金額", min_value=0.0, value=float(row_data["應付金額"]) if row_data["應付金額"] else 0.0, key="calculate_amt")
+                    if water_mode == "per_unit":
+                        curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=float(row_data["本月水錶度數"]), key="curr_water_units")
+                        water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
+                        value = Decimal(water_units) * Decimal(str(trow["每度水費"]))
+                        water_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                    elif water_mode == "fixed":
+                        curr_water_units = "N/A"
+                        prev_water_units = "N/A"
+                        water_fee = float(row_data["本月水錶度數"])
+                        water_units = "N/A"
+                    else:
+                        curr_water_units = "N/A"
+                        prev_water_units = "N/A"
+                        water_fee = "N/A"
+                        water_units = "N/A"
+
+                    if elec_mode == "per_unit":
+                        curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=float(row_data["本月電錶度數"]), key="curr_elec_units")
+                        elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
+                        value = Decimal(elec_units) * Decimal(str(trow["每度電費"]))
+                        elec_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+                    elif elec_mode == "fixed":
+                        curr_elec_units = "N/A"
+                        prev_elec_units = "N/A"
+                        elec_fee = float(row_data["本月電錶度數"])
+                        elec_units = "N/A"
+                    else:
+                        curr_elec_units = "N/A"
+                        prev_elec_units = "N/A"
+                        elec_fee = "N/A"
+                        elec_units = "N/A"
+
+                    to_float_safe = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else 0
+                    default_rent = float(filtered_df.iloc[idx]["每月固定租金"])
+                    calculate_amt = default_rent + to_float_safe(water_fee) + to_float_safe(elec_fee)
+                    water_elec_fee = to_float_safe(water_fee) + to_float_safe(elec_fee)
+                    
+                    calculate_date = st.date_input("📅 計算日期", value=pd.to_datetime(row_data["計算日期"]).date() if row_data["計算日期"] else pd.Timestamp.now().date(), key="calculate_date_in")
+                    if st.form_submit_button("🔢 計算"):
+                        # ⬇︎ 把結果暫存，供後面「新增」使用
+                        st.session_state["modify_calc"] = {
+                            "water_units": water_units,
+                            "elec_units": elec_units,
+                            "water_fee": water_fee,
+                            "elec_fee": elec_fee,
+                            "water_elec_fee": water_elec_fee,
+                            "calculate_amt": calculate_amt,
+                            "calculate_date": calculate_date,
+                            "inputs": (selected_year, selected_month, sig_val(curr_water_units), sig_val(curr_elec_units))
+                        }
+
+                    if "modify_calc" in st.session_state:
+                        rc = st.session_state["modify_calc"]
+
+                        # ➊ 水錶資訊一行
+                        if water_mode == "per_unit":
+                            col1, col2, col3 = st.columns(3)
+                            col1.info(f"💧 本月水錶: {float(curr_water_units)}")
+                            col2.info(f"💧 上月水錶: {float(prev_water_units)}")
+                            col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
+                        else:
+                            col1, col2= st.columns(2)
+                            col1.info(f"💧 fix本月水錶: {curr_water_units}")
+                            col2.info(f"💧 fix上月水錶: {prev_water_units}")
+
+                        # ➋ 電錶資訊一行
+                        if elec_mode == "per_unit":
+                            col4, col5, col6 = st.columns(3)
+                            col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
+                            col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
+                            col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
+                        else:
+                            col1, col2= st.columns(2)
+                            col1.info(f"⚡ fix本月電錶: {curr_elec_units}")
+                            col2.info(f"⚡ fix上月電錶: {prev_elec_units}")
+
+                        # ➌ 金額一行（水費／電費／租金）
+                        col7, col8, col9 = st.columns(3)
+                        col7.info(f"💧 水費: HK$ {rc['water_fee']}")
+                        col8.info(f"⚡ 電費: HK$ {rc['elec_fee']}")
+                        col9.info(f"💰 租金: HK$ {default_rent}")
+
+                        # ➍ 總金額一行
+                        st.info(f"📘 合共: HK$ {rc['calculate_amt']}")
                 else:
+                    water_fee = ""
+                    elec_fee = ""
+                    water_elec_fee = ""
                     calculate_date = ""
                     calculate_amt = ""
+                    st.session_state.pop("modify_calc", None)   # 取消勾選時清空
+
+                rc = st.session_state.get("modify_calc", {})
+                init_receive = rc.get("calculate_amt", default_rent)   # 月租 + 水電 OR 月租
                 if receive_done:
                     receive_date = st.date_input("📅 收租日期", value=pd.to_datetime(row_data["收取租金日期"]).date() if row_data["收取租金日期"] else pd.Timestamp.now().date(), key="receive_date_in")
-                    receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="receive_amt")
+                    receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=init_receive, key="receive_amt")
                 else:
                     receive_date = ""
                     receive_amt = ""
                 if deposit_done:
                     deposit_date = st.date_input("📅 過數日期", value=pd.to_datetime(row_data["存入租金日期"]).date() if row_data["存入租金日期"] else pd.Timestamp.now().date(), key="deposit_date_in")
-                    deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="deposit_amt") # 理論上收租金額=過戶金額
+                    deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=init_receive, key="deposit_amt")
                 else:
                     deposit_date = ""
                     deposit_amt = ""
+
+                # if receive_done:
+                #     receive_date = st.date_input("📅 收租日期", value=pd.to_datetime(row_data["收取租金日期"]).date() if row_data["收取租金日期"] else pd.Timestamp.now().date(), key="receive_date_in")
+                #     receive_amt  = st.number_input("💰 收租金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="receive_amt")
+                # else:
+                #     receive_date = ""
+                #     receive_amt = ""
+
+                # if deposit_done:
+                #     deposit_date = st.date_input("📅 過數日期", value=pd.to_datetime(row_data["存入租金日期"]).date() if row_data["存入租金日期"] else pd.Timestamp.now().date(), key="deposit_date_in")
+                #     deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=float(row_data["收租金額"]) if row_data["收租金額"] else 0.0, key="deposit_amt") # 理論上收租金額=過戶金額
+                # else:
+                #     deposit_date = ""
+                #     deposit_amt = ""
 
                 if st.form_submit_button("💾 儲存修改"):
                     tz_hk = pytz.timezone("Asia/Hong_Kong")
@@ -673,7 +814,7 @@ elif main_mode == "📆 租金處理進度":
                     sheet_rentflow.update(f"F{gs_row}:M{gs_row}", [[
                         str(calculate_date) if calculate_done else "",
                         calculate_done,
-                        calculate_amt  if calculate_done  else "",
+                        water_elec_fee  if calculate_done  else "",
                         str(receive_date) if receive_done else "",
                         str(receive_done).upper(),
                         receive_amt if receive_done else "",
@@ -688,16 +829,16 @@ elif main_mode == "📆 租金處理進度":
 
     elif sub_mode == "🗑️ 刪除租金紀錄":
         st.subheader("🗑️ 刪除租金紀錄")
-        if rentflow_df.empty:
+        if filtered_df.empty:
             st.info("目前尚無紀錄可刪除")
         else:
-            selector = (
-                rentflow_df["租客姓名"] + "｜" +
-                rentflow_df["單位地址"] + "｜" +
-                rentflow_df["年度"].astype(str) + "-" + rentflow_df["月份"].astype(str).str.zfill(2)
+            filtered_df["選項"] = (
+                filtered_df["租客姓名"] + "｜" +
+                filtered_df["單位地址"] + "｜" +
+                filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
-            choice    = st.selectbox("選擇要刪除的紀錄", selector)
-            idx       = selector.tolist().index(choice)
+            choice = st.selectbox("選擇要刪除的紀錄", filtered_df["選項"].tolist())
+            idx = filtered_df[filtered_df["選項"] == choice].index[0]
             sheet_row = idx + 2  # Google Sheets 的列數（從第2列開始）
 
             if st.button("⚠️ 確認刪除"):
