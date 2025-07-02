@@ -842,7 +842,9 @@ elif main_mode == "📆 租金處理進度":
                         str(deposit_date) if deposit_done else "",
                         str(deposit_done).upper(),
                         deposit_amt if deposit_done else "",
-                        calculate_amt, 
+                        curr_water_units, prev_water_units, water_fee,
+                        curr_elec_units, prev_elec_units, elec_fee,
+                        calculate_amt,
                         ts, who
                     ]])
                     st.success("✅ 已成功修改紀錄")
