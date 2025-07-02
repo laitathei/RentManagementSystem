@@ -70,6 +70,8 @@ main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租�
 
 tenant_data   = sheet_tenants.get_all_records()
 tenant_df     = pd.DataFrame(tenant_data)
+tenant_df["sheet_order"] = tenant_df.reset_index().index   # 0,1,2 ...
+tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
 rentflow_data = sheet_rentflow.get_all_records()
 rentflow_df   = pd.DataFrame(rentflow_data)
 listing_data  = sheet_listings.get_all_records()
@@ -155,6 +157,7 @@ if main_mode == "👥 租客資料管理":
                 ]
                 if not exists.empty:
                     st.warning("⚠️ 已存在相同租客姓名與單位地址的紀錄，請確認是否重覆輸入。")
+                    st.stop()
                 else:
                     new_row = [name, phone, address, rent, fix_water_fee, fix_electric_fee, water_fee, electric_fee, init_water_units, init_elec_units,
                             cutoff_day, language, management_fee, lease_type, str(lease_start), str(lease_end), ts, who]
@@ -325,6 +328,12 @@ elif main_mode == "📆 租金處理進度":
     deposit_keys = set(deposit_df["key"])
     # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
     undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
+    undeposited_df = (
+        undeposited_df
+        .merge(tenant_df[["key", "sheet_order"]], on="key", how="left")
+        .sort_values("sheet_order")            # 按租客資料的順序排
+        .drop(columns="sheet_order")           # 排好之後可以丟掉
+    )
     undeposited_rooms = len(undeposited_df)
     total_rooms  = len(active_df)                     # 全部房間
 
@@ -358,7 +367,7 @@ elif main_mode == "📆 租金處理進度":
     else: # 已收租但未入帳
         st.markdown("### 🏦 已收租但尚未過數名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-        st.data_editor(undeposited_df[cols].set_index(undeposited_df.index + 1), use_container_width=True, disabled=True)
+        st.data_editor(undeposited_df[cols].reset_index(drop=True).set_index(pd.RangeIndex(1, len(undeposited_df)+1)), use_container_width=True, disabled=True)
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
@@ -412,31 +421,44 @@ elif main_mode == "📆 租金處理進度":
                 prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
                 prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
 
+            if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
+                water_mode = "per_unit"          # 按度數計費
+            elif str(trow["固定水費"]).upper() != "N/A" and str(trow["固定水費"]) != "":
+                water_mode = "fixed"             # 固定金額
+            else:
+                water_mode = "none"              # 不代收
+
+            if str(trow["每度電費"]).upper() != "N/A" and str(trow["每度電費"]) != "":
+                elec_mode = "per_unit"          # 按度數計費
+            elif str(trow["固定電費"]).upper() != "N/A" and str(trow["固定電費"]) != "":
+                elec_mode = "fixed"             # 固定金額
+            else:
+                elec_mode = "none"              # 不代收
+
             if calculate_done:
-                curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_water_units", 0.0), key="curr_water_units")
-                curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_elec_units", 0.0), key="curr_elec_units")
+                if water_mode == "per_unit":
+                    curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_water_units", 0.0), key="curr_water_units")
+                if elec_mode == "per_unit":
+                    curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_elec_units", 0.0), key="curr_elec_units")
                 calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
 
                 if st.form_submit_button("🔢 計算"):
-                    water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
-                    elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
-
                     # ② 計算水費
-                    if str(trow["每度水費"]).upper() != "N/A" and water_units:
-                        # water_fee = round(water_units * float(trow["每度水費"]))
+                    if water_mode == "per_unit":
+                        water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
                         value = Decimal(water_units) * Decimal(str(trow["每度水費"]))
                         water_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                    elif str(trow["固定水費"]).upper() != "N/A":
+                    elif water_mode == "fixed":
                         water_fee = float(trow["固定水費"])
                     else:
                         water_fee = 0
 
                     # ③ 計算電費
-                    if str(trow["每度電費"]).upper() != "N/A" and elec_units:
-                        # elec_fee = round(elec_units * float(trow["每度電費"]))
+                    if elec_mode == "per_unit":
+                        elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
                         value = Decimal(elec_units) * Decimal(str(trow["每度電費"]))
                         elec_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
-                    elif str(trow["固定電費"]).upper() != "N/A":
+                    elif elec_mode == "fixed":
                         elec_fee = float(trow["固定電費"])
                     else:
                         elec_fee = 0
@@ -460,16 +482,24 @@ elif main_mode == "📆 租金處理進度":
                         rc = st.session_state["rent_calc"]
 
                         # ➊ 水錶資訊一行
-                        col1, col2, col3 = st.columns(3)
-                        col1.info(f"💧 本月水錶: {float(curr_water_units)}")
-                        col2.info(f"💧 上月水錶: {float(prev_water_units)}")
-                        col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
+                        if water_mode == "per_unit":
+                            col1, col2, col3 = st.columns(3)
+                            col1.info(f"💧 本月水錶: {float(curr_water_units)}")
+                            col2.info(f"💧 上月水錶: {float(prev_water_units)}")
+                            col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
+                        elif water_mode == "fixed":
+                            col1 = st.columns(1)
+                            col1.info(f"💧 固定水費: HK$ {float(trow['固定水費'])}")
 
                         # ➋ 電錶資訊一行
-                        col4, col5, col6 = st.columns(3)
-                        col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
-                        col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
-                        col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
+                        if elec_mode == "per_unit":
+                            col4, col5, col6 = st.columns(3)
+                            col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
+                            col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
+                            col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
+                        elif elec_mode == "fixed":
+                            col4 = st.columns(1)
+                            col4.info(f"⚡ 固定電費: HK$ {float(trow['固定電費'])}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
@@ -530,6 +560,7 @@ elif main_mode == "📆 租金處理進度":
                 ]
                 if not exists.empty:
                     st.warning(f"⚠️ 此租客{selected_year} 年 {selected_month} 月的租金流程紀錄已存在！")
+                    st.stop()
                 else:
                     row = [
                         phone, name, address, year, month,
@@ -666,6 +697,7 @@ elif main_mode == "🏢 租賃盤源管理":
                 dup = listing_df[(listing_df["物業地址"] == address.strip())]
                 if not dup.empty:
                     st.warning("⚠️ 此地址已存在盤源，請確認是否重覆。")
+                    st.stop()
                 else:
                     tz_hk = pytz.timezone("Asia/Hong_Kong")
                     ts = datetime.now(tz_hk).strftime("%Y-%m-%d %H:%M:%S")
