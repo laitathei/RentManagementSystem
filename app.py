@@ -418,7 +418,8 @@ elif main_mode == "📆 租金處理進度":
                 if st.form_submit_button("🔢 計算"):
                     water_units = max(0, round(float(curr_water_units) - float(prev_water_units)))
                     elec_units  = max(0, round(float(curr_elec_units)  - float(prev_elec_units)))
-
+                    calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
+                    
                     # ② 計算水費
                     if str(trow["每度水費"]).upper() != "N/A" and water_units:
                         water_fee = round(water_units * float(trow["每度水費"]))
@@ -437,7 +438,6 @@ elif main_mode == "📆 租金處理進度":
 
                     calculate_amt = default_rent + water_fee + elec_fee
                     water_elec_fee = water_fee + elec_fee
-                    calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
 
                     # ⬇︎ 把結果暫存，供後面「新增」使用
                     st.session_state["rent_calc"] = {
