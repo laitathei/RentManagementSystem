@@ -519,6 +519,7 @@ elif main_mode == "📆 租金處理進度":
                 who = st.session_state.get("user_name", "unknown")
                 exists = rentflow_df[
                     (rentflow_df["租客姓名"] == name) &
+                    (rentflow_df["單位地址"] == address) &
                     (rentflow_df["年度"] == year) &
                     (rentflow_df["月份"] == month)
                 ]
@@ -536,8 +537,8 @@ elif main_mode == "📆 租金處理進度":
                         str(deposit_date) if deposit_done else "",
                         deposit_done,
                         deposit_amt  if deposit_done else "",
-                        water_units, prev_water_units, water_fee,
-                        elec_units, prev_elec_units, elec_fee,
+                        curr_water_units, prev_water_units, water_fee,
+                        curr_elec_units, prev_elec_units, elec_fee,
                         calculate_amt,
                         ts, who
                     ]
