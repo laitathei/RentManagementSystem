@@ -436,6 +436,7 @@ elif main_mode == "📆 租金處理進度":
                         elec_fee = 0
 
                     calculate_amt = default_rent + water_fee + elec_fee
+                    default_rent = calculate_amt
                     water_elec_fee = water_fee + elec_fee
                     calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
 
@@ -489,7 +490,7 @@ elif main_mode == "📆 租金處理進度":
                 receive_amt = ""
             if deposit_done:
                 deposit_date = st.date_input("📅 過數日期", value=pd.Timestamp.now().date(), key="deposit_date_in")
-                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=calculate_amt, key="deposit_amt")
+                deposit_amt  = st.number_input("💰 過戶金額", min_value=0.0, value=default_rent, key="deposit_amt")
             else:
                 deposit_date = ""
                 deposit_amt = ""
