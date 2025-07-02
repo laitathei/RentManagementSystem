@@ -635,12 +635,6 @@ elif main_mode == "📆 租金處理進度":
                 filtered_df["單位地址"] + "｜" +
                 filtered_df["年度"].astype(str) + "-" + filtered_df["月份"].astype(str).str.zfill(2)
             )
-            rentflow_df["選項"] = (
-                rentflow_df["租客姓名"] + "｜"
-                + rentflow_df["單位地址"] + "｜"
-                + rentflow_df["年度"].astype(str) + "-"
-                + rentflow_df["月份"].astype(str).str.zfill(2)
-            )
             choice = st.selectbox("選擇要修改的紀錄", filtered_df["選項"].tolist())
             idx = rentflow_df[rentflow_df["選項"] == choice].index[0]
             row_data = rentflow_df.loc[idx]
@@ -649,6 +643,7 @@ elif main_mode == "📆 租金處理進度":
             name = row_data["租客姓名"]
             address = row_data["單位地址"]
             trow = tenant_df[(tenant_df["租客姓名"] == name) & (tenant_df["單位地址"] == address)].iloc[0]
+            default_rent = float(trow["每月固定租金"])
             if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
                 water_mode = "per_unit"          # 按度數計費
             elif str(trow["固定水費"]).upper() != "N/A" and str(trow["固定水費"]) != "":
@@ -724,7 +719,6 @@ elif main_mode == "📆 租金處理進度":
                         elec_units = "N/A"
 
                     to_float_safe = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else 0
-                    default_rent = float(filtered_df.iloc[idx]["每月固定租金"])
                     calculate_amt = default_rent + to_float_safe(water_fee) + to_float_safe(elec_fee)
                     water_elec_fee = to_float_safe(water_fee) + to_float_safe(elec_fee)
                     
