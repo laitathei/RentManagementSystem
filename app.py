@@ -424,12 +424,12 @@ elif main_mode == "📆 租金處理進度":
             if not hist_df.empty:
                 # 先按 年度、月份 由大到小排序，再取第一筆
                 prev_row = hist_df.sort_values(["年度", "月份"], ascending=False).iloc[0]
-                prev_water_units = float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始水錶度數"])
-                prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
+                prev_water_units = (float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace(".", "", 1).isdigit() else "N/A")
+                prev_elec_units = (float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace(".", "", 1).isdigit() else "N/A")
             else:
                 # 找不到任何舊紀錄，就用租客資料的「起始錶度數」
-                prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else "N/A"
-                prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else "N/A"
+                prev_water_units = (float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace(".", "", 1).isdigit() else "N/A")
+                prev_elec_units = (float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace(".", "", 1).isdigit() else "N/A")
 
             if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
                 water_mode = "per_unit"          # 按度數計費
@@ -483,7 +483,7 @@ elif main_mode == "📆 租金處理進度":
 
                     to_float_safe = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else 0
                     calculate_amt = default_rent + to_float_safe(water_fee) + to_float_safe(elec_fee)
-                    water_elec_fee = water_fee + elec_fee
+                    water_elec_fee = to_float_safe(water_fee) + to_float_safe(elec_fee)
 
                     # ⬇︎ 把結果暫存，供後面「新增」使用
                     st.session_state["rent_calc"] = {
@@ -513,7 +513,7 @@ elif main_mode == "📆 租金處理進度":
                             col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                             col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
-                            
+
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
                         col7.info(f"💧 水費: HK$ {rc['water_fee']}")
