@@ -70,8 +70,9 @@ main_mode = st.radio("📂 功能類別", ["👥 租客資料管理", "📆 租�
 
 tenant_data   = sheet_tenants.get_all_records()
 tenant_df     = pd.DataFrame(tenant_data)
-tenant_df["sheet_order"] = tenant_df.reset_index().index   # 0,1,2 ...
+tenant_df["sheet_order"] = tenant_df.index + 2          # 2,3,4,...
 tenant_df["key"] = tenant_df["租客姓名"] + "｜" + tenant_df["單位地址"]
+order_map = dict(zip(tenant_df["key"], tenant_df["sheet_order"]))
 rentflow_data = sheet_rentflow.get_all_records()
 rentflow_df   = pd.DataFrame(rentflow_data)
 listing_data  = sheet_listings.get_all_records()
@@ -330,9 +331,9 @@ elif main_mode == "📆 租金處理進度":
     undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
     undeposited_df = (
         undeposited_df
-        .merge(tenant_df[["key", "sheet_order"]], on="key", how="left")
-        .sort_values("sheet_order")            # 按租客資料的順序排
-        .drop(columns="sheet_order")           # 排好之後可以丟掉
+            .assign(order=lambda df: df["key"].map(order_map))
+            .sort_values("order")
+            .drop(columns="order")
     )
     undeposited_rooms = len(undeposited_df)
     total_rooms  = len(active_df)                     # 全部房間
@@ -418,8 +419,8 @@ elif main_mode == "📆 租金處理進度":
                 prev_elec_units  = float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace('.', '', 1).isdigit() else float(trow["起始電錶度數"])
             else:
                 # 找不到任何舊紀錄，就用租客資料的「起始錶度數」
-                prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else 0
-                prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else 0
+                prev_water_units = float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace('.', '', 1).isdigit() else "N/A"
+                prev_elec_units  = float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace('.', '', 1).isdigit() else "N/A"
 
             if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
                 water_mode = "per_unit"          # 按度數計費
@@ -456,7 +457,7 @@ elif main_mode == "📆 租金處理進度":
                         water_fee = float(trow["固定水費"])
                         water_units = "N/A"
                     else:
-                        water_fee = 0
+                        water_fee = "N/A"
                         water_units = "N/A"
 
                     # ③ 計算電費
@@ -468,7 +469,7 @@ elif main_mode == "📆 租金處理進度":
                         elec_fee = float(trow["固定電費"])
                         elec_units = "N/A"
                     else:
-                        elec_fee = 0
+                        elec_fee = "N/A"
                         elec_units = "N/A"
 
                     calculate_amt = default_rent + water_fee + elec_fee
