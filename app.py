@@ -862,7 +862,7 @@ elif main_mode == "📆 租金處理進度":
             )
             choice = st.selectbox("選擇要刪除的紀錄", filtered_df["選項"].tolist())
             idx = filtered_df[filtered_df["選項"] == choice].index[0]
-            sheet_row = idx + 2  # Google Sheets 的列數（從第2列開始）
+            sheet_row = int(idx) + 2  # Google Sheets 的列數（從第2列開始）
 
             if st.button("⚠️ 確認刪除"):
                 sheet_rentflow.delete_rows(sheet_row)
