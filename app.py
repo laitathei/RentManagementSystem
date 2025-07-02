@@ -329,12 +329,13 @@ elif main_mode == "📆 租金處理進度":
     deposit_keys = set(deposit_df["key"])
     # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
     undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
-    undeposited_df = (
-        undeposited_df
-            .assign(order=lambda df: df["key"].map(order_map))
-            .sort_values("order")
-            .drop(columns="order")
+    undeposited_df = (undeposited_df
+        .assign(sheet_row=lambda d: d["key"].map(order_map))
+        .sort_values("sheet_row")
+        .set_index("sheet_row")          # <<── index 就是 9‧10‧12…
     )
+
+
     undeposited_rooms = len(undeposited_df)
     total_rooms  = len(active_df)                     # 全部房間
 
@@ -368,7 +369,7 @@ elif main_mode == "📆 租金處理進度":
     else: # 已收租但未入帳
         st.markdown("### 🏦 已收租但尚未過數名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-        st.data_editor(undeposited_df[cols].reset_index(drop=True).set_index(pd.RangeIndex(1, len(undeposited_df)+1)), use_container_width=True, disabled=True)
+        st.data_editor(undeposited_df[cols], use_container_width=True, disabled=True)
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
