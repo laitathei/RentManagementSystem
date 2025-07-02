@@ -556,7 +556,7 @@ elif main_mode == "📆 租金處理進度":
                 deposit_date = ""
                 deposit_amt = ""
 
-            calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, sig_val(st.session_state.get("curr_water_units", 0.0)), sig_val(st.session_state.get("curr_elec_units", 0.0))))
+            calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, sig_val(st.session_state.get("curr_water_units", "N/A")), sig_val(st.session_state.get("curr_elec_units", "N/A"))))
 
             if not calc_ok and calculate_done:
                 st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
