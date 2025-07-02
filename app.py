@@ -354,7 +354,7 @@ elif main_mode == "📆 租金處理進度":
     else: # 尚未計算水電
         st.markdown("### 🧮 尚未計算水電名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址"] if c in uncalculated_df.columns]
-        uncalculated_df = uncalculated_df.rename(columns={"sheet_row": ""}, inplace=True)
+        uncalculated_df.rename(columns={"sheet_row": ""}, inplace=True)
         st.data_editor(uncalculated_df[cols], use_container_width=True, disabled=True)
 
     if unpaid_df.empty and uncalculated_df.empty: # 已計算水電和已收租
@@ -366,7 +366,7 @@ elif main_mode == "📆 租金處理進度":
         unpaid_view = (unpaid_df.merge(tmp, on="key", how="left"))
         unpaid_view["應付金額"] = (pd.to_numeric(unpaid_view["每月固定租金"], errors="coerce").fillna(0) + unpaid_view["水電金額"])
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "應付金額"] if c in unpaid_df.columns]
-        unpaid_df = unpaid_df.rename(columns={"sheet_row": ""}, inplace=True)
+        unpaid_df.rename(columns={"sheet_row": ""}, inplace=True)
         st.data_editor(unpaid_df[cols], use_container_width=True, disabled=True)
 
     if unpaid_df.empty and uncalculated_df.empty and undeposited_df.empty: # 已計算水電和已收租和已過戶
@@ -374,7 +374,7 @@ elif main_mode == "📆 租金處理進度":
     else: # 已收租但未入帳
         st.markdown("### 🏦 已收租但尚未過數名單")
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
-        undeposited_df = undeposited_df.rename(columns={"sheet_row": ""}, inplace=True)
+        undeposited_df.rename(columns={"sheet_row": ""}, inplace=True)
         st.data_editor(undeposited_df[cols], use_container_width=True, disabled=True)
 
     sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
