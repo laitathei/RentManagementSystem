@@ -447,6 +447,7 @@ elif main_mode == "📆 租金處理進度":
             else:
                 elec_mode = "none"              # 不代收
 
+            sig_val = lambda v: "N/A" if (v is None or (isinstance(v, str) and v.strip() == "")) else str(v)
             if calculate_done:
                 if water_mode == "per_unit":
                     curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_water_units", 0.0), key="curr_water_units")
@@ -496,7 +497,7 @@ elif main_mode == "📆 租金處理進度":
                         "water_elec_fee": water_elec_fee,
                         "calculate_amt": calculate_amt,
                         "calculate_date": calculate_date,
-                        "inputs": (year, month, curr_water_units, curr_elec_units)
+                        "inputs": (year, month, sig_val(curr_water_units), sig_val(curr_elec_units))
                     }
 
                     if "rent_calc" in st.session_state:
@@ -555,7 +556,7 @@ elif main_mode == "📆 租金處理進度":
                 deposit_date = ""
                 deposit_amt = ""
 
-            calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, st.session_state.get("curr_water_units", 0.0), st.session_state.get("curr_elec_units", 0.0)))
+            calc_ok = (calculate_done and rc and rc["inputs"] == (year, month, sig_val(st.session_state.get("curr_water_units", 0.0)), sig_val(st.session_state.get("curr_elec_units", 0.0))))
 
             if not calc_ok and calculate_done:
                 st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
