@@ -4,6 +4,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 from decimal import Decimal, ROUND_HALF_UP
 import pandas as pd
 from datetime import datetime
+import numpy as np
 import pytz
 
 # ────────────────── 🔒 密碼登入驗證 ──────────────────
@@ -93,11 +94,11 @@ for col in ["最多人數限制", "業主電話"]:
     if col in listing_df.columns:
         listing_df[col] = listing_df[col].astype(str)
 
-tenant_df["起始水錶度數"] = pd.to_numeric(tenant_df["起始水錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
-tenant_df["起始電錶度數"] = pd.to_numeric(tenant_df["起始電錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+# tenant_df["起始水錶度數"] = pd.to_numeric(tenant_df["起始水錶度數"], errors="coerce")
+# tenant_df["起始電錶度數"] = pd.to_numeric(tenant_df["起始電錶度數"], errors="coerce")
 
-rentflow_df["本月水錶度數"] = pd.to_numeric(rentflow_df["本月水錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
-rentflow_df["本月電錶度數"] = pd.to_numeric(rentflow_df["本月電錶度數"].replace(['N/A', '', None], 0), errors="coerce").fillna(0.0)
+# rentflow_df["本月水錶度數"] = pd.to_numeric(rentflow_df["本月水錶度數"], errors="coerce")
+# rentflow_df["本月電錶度數"] = pd.to_numeric(rentflow_df["本月電錶度數"], errors="coerce")
 
 if main_mode == "👥 租客資料管理":
     # 讀取資料
@@ -421,15 +422,16 @@ elif main_mode == "📆 租金處理進度":
             ]
 
             # ➋ 取出最近一筆（年度、月份都最大的那行）
+            to_number_or_na = lambda v: float(v) if isinstance(v, (int, float)) or (isinstance(v, str) and v.replace('.', '', 1).isdigit()) else v
             if not hist_df.empty:
                 # 先按 年度、月份 由大到小排序，再取第一筆
                 prev_row = hist_df.sort_values(["年度", "月份"], ascending=False).iloc[0]
-                prev_water_units = (float(prev_row["本月水錶度數"]) if str(prev_row["本月水錶度數"]).replace(".", "", 1).isdigit() else "N/A")
-                prev_elec_units = (float(prev_row["本月電錶度數"]) if str(prev_row["本月電錶度數"]).replace(".", "", 1).isdigit() else "N/A")
+                prev_water_units = to_number_or_na(prev_row["本月水錶度數"])
+                prev_elec_units  = to_number_or_na(prev_row["本月電錶度數"])
             else:
                 # 找不到任何舊紀錄，就用租客資料的「起始錶度數」
-                prev_water_units = (float(trow["起始水錶度數"]) if str(trow["起始水錶度數"]).replace(".", "", 1).isdigit() else "N/A")
-                prev_elec_units = (float(trow["起始電錶度數"]) if str(trow["起始電錶度數"]).replace(".", "", 1).isdigit() else "N/A")
+                prev_water_units = to_number_or_na(trow["起始水錶度數"])
+                prev_elec_units  = to_number_or_na(trow["起始電錶度數"])
 
             if str(trow["每度水費"]).upper() != "N/A" and str(trow["每度水費"]) != "":
                 water_mode = "per_unit"          # 按度數計費
