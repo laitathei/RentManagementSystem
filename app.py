@@ -312,7 +312,7 @@ elif main_mode == "📆 租金處理進度":
     # ① 未計算 = 月內「應收」但 key 不在 calc_keys
     uncalculated_df = active_df[~active_df["key"].isin(calculated_keys)]
     uncalculated_df = (uncalculated_df
-        .assign(sheet_row=lambda d: d["key"].map(order_map))
+        .assign(索引=lambda d: d["key"].map(order_map))
         .sort_values("索引")
         .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
@@ -323,7 +323,7 @@ elif main_mode == "📆 租金處理進度":
     # ② 未收租  = 已經計算 (key 在 calc_keys) 但還沒 paid
     unpaid_df = active_df[active_df["key"].isin(calculated_keys) & ~active_df["key"].isin(paid_keys)]
     unpaid_df = (unpaid_df
-        .assign(sheet_row=lambda d: d["key"].map(order_map))
+        .assign(索引=lambda d: d["key"].map(order_map))
         .sort_values("索引")
         .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
@@ -335,7 +335,7 @@ elif main_mode == "📆 租金處理進度":
     # ③ 未入帳  = 已收租且 key 在 paid_keys，但不在 dep_keys
     undeposited_df = filtered_df[(filtered_df["key"].isin(paid_keys)) & (~filtered_df["key"].isin(deposit_keys))]
     undeposited_df = (undeposited_df
-        .assign(sheet_row=lambda d: d["key"].map(order_map))
+        .assign(索引=lambda d: d["key"].map(order_map))
         .sort_values("索引")
         .set_index("索引")          # <<── index 就是 9‧10‧12…
     )
