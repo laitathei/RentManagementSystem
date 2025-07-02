@@ -438,8 +438,12 @@ elif main_mode == "📆 租金處理進度":
             if calculate_done:
                 if water_mode == "per_unit":
                     curr_water_units = st.number_input("💧 本月水錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_water_units", 0.0), key="curr_water_units")
+                else:
+                    curr_water_units = prev_water_units
                 if elec_mode == "per_unit":
                     curr_elec_units  = st.number_input("⚡ 本月電錶度數", min_value=0.0, step=0.1, value=st.session_state.get("curr_elec_units", 0.0), key="curr_elec_units")
+                else:
+                    curr_elec_units  = prev_elec_units
                 calculate_date = st.date_input("📅 計算日期", value=pd.Timestamp.now().date(), key="calculated_date_in")
 
                 if st.form_submit_button("🔢 計算"):
