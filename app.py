@@ -503,7 +503,7 @@ elif main_mode == "📆 租金處理進度":
                 st.warning("⚠️ 請先按『🔢 計算』計算金額，再儲存！")
                 st.stop()
 
-            if calc_ok and st.form_submit_button("✅ 新增", disabled = not calc_ok):
+            if st.form_submit_button("✅ 新增", disabled = not calc_ok):
                 water_units     = rc.get("water_units", "")
                 prev_water_units = prev_water_units          # 仍沿用先前計算好的舊度數
                 water_fee       = rc.get("water_fee", "")
