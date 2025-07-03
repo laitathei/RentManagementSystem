@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime
 import re
 from io import BytesIO
+from docx.oxml.ns import qn
 from docx.shared import Pt
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx import Document
@@ -934,15 +935,15 @@ elif main_mode == "📆 租金處理進度":
 
             # ===== Word =====
             doc = Document()
-            doc.styles['Normal'].font.size = Pt(16)  # 設定字體大小
-            doc.styles['Normal'].font.name = 'Microsoft JhengHei'  # 設定字體
+            doc.styles['Normal'].font.size = Pt(12)  # 設定字體大小
+            doc.styles['Normal'].font.name = 'PMingLiU'  # 設定字體
+            doc.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), 'PMingLiU')
             doc.add_heading("業主租金及水電收據", level=1)
             doc.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
             p = doc.add_paragraph()
             p.add_run(f"地址：{base}\n")
             p.add_run(f"月份：{selected_year} 年 {selected_month} 月\n")
             
-
             grand_total = 0.0                 # ② 累加器
             mgmt_total  = 0.0
             parts = []
@@ -1024,7 +1025,7 @@ elif main_mode == "📆 租金處理進度":
             expr = " + ".join([s.split(":")[1] for s in parts])
             p_sum.add_run(f"本層租金＋水電合計：{expr} = {grand_total:.0f}\n")
             p_sum.add_run(f"收租費合計：{mgmt_total:.0f}\n")
-            p_sum.add_run(f"淨實收金額：{grand_total - mgmt_total:.0f}\n")
+            p_sum.add_run(f"淨實收金額：{grand_total} - {mgmt_total} = {grand_total-mgmt_total:.0f}\n")
 
             # ===== 回傳 BytesIO =====
             buf = BytesIO()
