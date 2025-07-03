@@ -998,7 +998,7 @@ elif main_mode == "📆 租金處理進度":
             for _, r in subset.iterrows():
                 key = (r["租客姓名"], r["單位地址"])
                 fee = fee_map.get(key, {})
-                rent  = fee.get("每月固定租金", 0)
+                rent  = int(fee.get("每月固定租金", 0))
 
                 # －－ 水費 －－
                 wu_curr = int(_num(r.get("本月水錶度數", 0)))
@@ -1043,7 +1043,7 @@ elif main_mode == "📆 租金處理進度":
                     elec_fee = 0
                     elec_mode = "none"
 
-                total = rent + water_fee + elec_fee
+                total = int(rent + water_fee + elec_fee)
                 room_label = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
                 parts.append(f"{room_label}:{total:.0f}")
                 mgmt_fee = int(fee.get("收租費", 0))       # ← 如果 N/A 已在 _nz 變 0
