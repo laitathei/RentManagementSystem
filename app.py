@@ -918,35 +918,93 @@ elif main_mode == "📆 租金處理進度":
             ok_list = check[check["need"] == check["ready"]].index.tolist()
             return sorted(ok_list)
         
-        def generate_owner_receipt(df_month: pd.DataFrame, base: str) -> BytesIO:
-            doc = Document()
-            y = int(df_month["年度"].iloc[0])
-            m = int(df_month["月份"].iloc[0])
+        def generate_owner_receipt(df_month: pd.DataFrame,
+                                base: str,
+                                tenant_df: pd.DataFrame) -> BytesIO:
+            """依樓層(base) 產生詳細業主收據 Word 並回傳 BytesIO"""
 
+            # ===== 小工具 =====
+            _num = lambda v: pd.to_numeric(v, errors="coerce").fillna(0)
+            def _nz(v):                                          # N/A → 0
+                return 0 if str(v).upper() == "N/A" or str(v) == "" else float(v)
+
+            # 建立「(姓名, 地址) → 租客收費資料」查詢表
+            fee_cols = ["租客姓名", "單位地址",
+                        "每月固定租金", "每度水費", "固定水費",
+                        "每度電費", "固定電費"]
+            fee_map = (tenant_df[fee_cols]
+                    .set_index(["租客姓名", "單位地址"])
+                    .applymap(_nz)      # 先把 N/A 轉 0
+                    .to_dict("index"))
+
+            # ===== Word =====
+            doc = Document()
+            y = int(df_month["年度"].iloc[0]); m = int(df_month["月份"].iloc[0])
             doc.add_heading("業主租金及水電收據", level=1)
             doc.add_paragraph(f"地址：{base}")
             doc.add_paragraph(f"月份：{y} 年 {m:02} 月")
+            doc.add_paragraph("")  # 空行
 
-            tbl = doc.add_table(rows=1, cols=6)
-            hdr = tbl.rows[0].cells
-            for cell, text in zip(hdr, ["單位", "租客", "租金", "水費", "電費", "合計"]):
-                cell.text = text
-
+            # 按租客逐一列明
             for _, r in df_month[df_month["base"] == base].iterrows():
-                c = tbl.add_row().cells
-                # 劏房顯示 A房 / B房…；整層顯示 6/F
-                unit = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
-                c[0].text = unit
-                c[1].text = r["租客姓名"]
-                c[2].text = f"{r['每月固定租金']:.0f}"
-                c[3].text = f"{r['水費差額']:.0f}"
-                c[4].text = f"{r['電費差額']:.0f}"
-                c[5].text = f"{r['每月固定租金'] + r['水費差額'] + r['電費差額']:.0f}"
+                key = (r["租客姓名"], r["單位地址"])
+                fee = fee_map.get(key, {})
+                rent  = fee.get("每月固定租金", 0)
 
+                # －－ 水費 －－
+                wu_curr = _num(r.get("本月水錶度數", 0))
+                wu_prev = _num(r.get("上月水錶度數", 0))
+                water_units = max(0, wu_curr - wu_prev)
+                water_rate  = fee.get("每度水費", 0)
+                water_fixed = fee.get("固定水費", 0)
+
+                if water_rate > 0:
+                    water_fee = water_units * water_rate
+                    water_desc = f"水費為: ({wu_curr}-{wu_prev}) × {water_rate} = {water_fee:.0f}"
+                elif water_fixed > 0:
+                    water_fee = water_fixed
+                    water_desc = f"水費為: 固定水費 = {water_fee:.0f}"
+                else:
+                    water_fee = 0
+                    water_desc = "水費為: 不代收 (0)"
+
+                # －－ 電費 －－
+                eu_curr = _num(r.get("本月電錶度數", 0))
+                eu_prev = _num(r.get("上月電錶度數", 0))
+                elec_units = max(0, eu_curr - eu_prev)
+                elec_rate  = fee.get("每度電費", 0)
+                elec_fixed = fee.get("固定電費", 0)
+
+                if elec_rate > 0:
+                    elec_fee = elec_units * elec_rate
+                    elec_desc = f"電費為: ({eu_curr}-{eu_prev}) × {elec_rate} = {elec_fee:.0f}"
+                elif elec_fixed > 0:
+                    elec_fee = elec_fixed
+                    elec_desc = f"電費為: 固定電費 = {elec_fee:.0f}"
+                else:
+                    elec_fee = 0
+                    elec_desc = "電費為: 不代收 (0)"
+
+                total = rent + water_fee + elec_fee
+
+                # －－ 輸出到 Word －－
+                p = doc.add_paragraph()
+                p.add_run(f"租客名稱：{r['租客姓名']}\n").bold = True
+                p.add_run(f"租客地址：{r['單位地址']}\n")
+                p.add_run(water_desc + "\n")
+                p.add_run(elec_desc + "\n")
+                p.add_run(
+                    f"本月應繳租金為: {rent:.0f} + {water_fee:.0f} + "
+                    f"{elec_fee:.0f} = {total:.0f}\n"
+                )
+                doc.add_paragraph("")  # 插入一空行分隔下一位租客
+
+            # ===== 回傳 BytesIO =====
             buf = BytesIO()
             doc.save(buf)
             buf.seek(0)
             return buf
+
         
         st.subheader("📄 產生業主收據")
 
@@ -964,7 +1022,7 @@ elif main_mode == "📆 租金處理進度":
         if st.button("🚀 生成收據 Word"):
             # 先把 base / is_room 欄位補進 DataFrame（後續函式要用）
             filtered_df[["base","is_room"]] = filtered_df["單位地址"].apply(lambda s: pd.Series(split_address(s)))
-            buf = generate_owner_receipt(filtered_df, sel_base)
+            buf = generate_owner_receipt(filtered_df, sel_base, tenant_df)
             fname = f"{selected_year}年{selected_month}月{sel_base}業主收據.docx"
             st.download_button("⬇️ 下載收據", data=buf.getvalue(), file_name=fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
