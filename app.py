@@ -905,6 +905,36 @@ elif main_mode == "📆 租金處理進度":
             ok_list = check[check["need"] == check["ready"]].index.tolist()
             return sorted(ok_list)
         
+        def room_sort_key(addr: str, is_room: bool):
+            """
+            解析最後一個 token（A房 / 2室 / 前座 …）決定排序權重
+            return  tuple(order_group, order_value)
+            - order_group: 0=字母, 1=數字, 2=前/後, 3=非劏房
+            - order_value: 用來在同 group 內排序
+            """
+            if not is_room:
+                # 整層單位（6/F）排在最後，且依樓層排序
+                # 把 6/F → 6 作數字排序；樓層越低先出
+                try:
+                    fl = int(addr.split("/")[-1].replace("F",""))
+                except Exception:
+                    fl = 999
+                return (3, fl)
+
+            token = addr.split()[-1]          # A房 / 1室 / 前座…
+            base, suffix = token[:-1], token[-1]   # 去掉最後一字 (房/室/座)
+
+            if suffix in ("房", "室"):
+                if base.isalpha():            # A房 / B室
+                    return (0, base.upper())
+                if base.isdigit():            # 1房 / 12室
+                    return (1, int(base))
+            if token in ("前座", "後座"):
+                return (2, 0 if token == "前座" else 1)
+
+            # 其他情況放最後
+            return (3, token)
+
         def generate_owner_receipt(df_month: pd.DataFrame,
                                 base: str,
                                 tenant_df: pd.DataFrame) -> BytesIO:
@@ -938,17 +968,34 @@ elif main_mode == "📆 租金處理進度":
             doc.styles['Normal'].font.size = Pt(12)  # 設定字體大小
             doc.styles['Normal'].font.name = 'PMingLiU'  # 設定字體
             doc.styles['Normal']._element.rPr.rFonts.set(qn('w:eastAsia'), 'PMingLiU')
-            doc.add_heading("業主租金及水電收據", level=1)
-            doc.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+            p_title = doc.add_paragraph()
+            p_title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            run_title = p_title.add_run("業主租金及水電收據")
+            run_title.font.size = Pt(16)          # 標題字體大小
+            run_title.font.bold = False           # 不用粗體
+            run_title.font.name = 'PMingLiU'      # 指定中文字型
+            run_title._element.rPr.rFonts.set(qn('w:eastAsia'), 'PMingLiU')
+
             p = doc.add_paragraph()
             p.add_run(f"地址：{base}\n")
-            p.add_run(f"月份：{selected_year} 年 {selected_month} 月\n")
+            p.add_run(f"月份：{selected_year} 年 {selected_month} 月")
             
             grand_total = 0.0                 # ② 累加器
             mgmt_total  = 0.0
             parts = []
+
+            subset = df_month[df_month["base"] == base].copy()
+
+            subset["__sort_key"] = subset.apply(
+                lambda row: room_sort_key(row["單位地址"], row["is_room"]),
+                axis=1
+            )
+
+            subset = subset.sort_values("__sort_key")
+
             # 按租客逐一列明
-            for _, r in df_month[df_month["base"] == base].iterrows():
+            for _, r in subset.iterrows():
                 key = (r["租客姓名"], r["單位地址"])
                 fee = fee_map.get(key, {})
                 rent  = fee.get("每月固定租金", 0)
@@ -969,7 +1016,8 @@ elif main_mode == "📆 租金處理進度":
 
                 if water_rate > 0:
                     water_mode = "per_unit"
-                    water_fee  = water_units * water_rate
+                    value = Decimal(water_units) * Decimal(water_rate)
+                    water_fee = int(value.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
                 elif water_fixed > 0:
                     water_mode = "fixed"
                     water_fee  = water_fixed
@@ -986,6 +1034,7 @@ elif main_mode == "📆 租金處理進度":
 
                 if elec_rate > 0:
                     elec_mode = "per_unit"
+                    value = Decimal(elec_units) * Decimal(elec_rate)
                     elec_fee  = elec_units * elec_rate
                 elif elec_fixed > 0:
                     elec_mode = "fixed"
@@ -997,7 +1046,7 @@ elif main_mode == "📆 租金處理進度":
                 total = rent + water_fee + elec_fee
                 room_label = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
                 parts.append(f"{room_label}:{total:.0f}")
-                mgmt_fee = fee.get("收租費", 0)       # ← 如果 N/A 已在 _nz 變 0
+                mgmt_fee = int(fee.get("收租費", 0))       # ← 如果 N/A 已在 _nz 變 0
                 grand_total += total
                 mgmt_total  += mgmt_fee
 
@@ -1018,14 +1067,14 @@ elif main_mode == "📆 租金處理進度":
                     p.add_run(f"電費： {elec_fee:.0f}\n")
 
                 p.add_run(
-                    f"本月應繳租金為: {rent} + {water_fee} + {elec_fee} = {total}\n"
+                    f"總共租金: {rent} + {water_fee} + {elec_fee} = {total}\n"
                 )
 
             p_sum = doc.add_paragraph()
             expr = " + ".join([s.split(":")[1] for s in parts])
             p_sum.add_run(f"本層租金＋水電合計：{expr} = {grand_total:.0f}\n")
             p_sum.add_run(f"收租費合計：{mgmt_total:.0f}\n")
-            p_sum.add_run(f"淨實收金額：{grand_total} - {mgmt_total} = {grand_total-mgmt_total:.0f}\n")
+            p_sum.add_run(f"淨實收金額：{grand_total} - {mgmt_total} = {grand_total-mgmt_total:.0f}")
 
             # ===== 回傳 BytesIO =====
             buf = BytesIO()
