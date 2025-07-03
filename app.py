@@ -918,27 +918,35 @@ elif main_mode == "📆 租金處理進度":
             ok_list = check[check["need"] == check["ready"]].index.tolist()
             return sorted(ok_list)
         
-        def generate_owner_receipt(df_month:pd.DataFrame, base:str)->BytesIO:
-            """把同 base 的全部房/戶生成 Word，回傳 BytesIO"""
+        def generate_owner_receipt(df_month: pd.DataFrame, base: str) -> BytesIO:
             doc = Document()
-            y = int(df_month["年度"].iloc[0]); m = int(df_month["月份"].iloc[0])
+            y = int(df_month["年度"].iloc[0])
+            m = int(df_month["月份"].iloc[0])
+
             doc.add_heading("業主租金及水電收據", level=1)
             doc.add_paragraph(f"地址：{base}")
             doc.add_paragraph(f"月份：{y} 年 {m:02} 月")
 
             tbl = doc.add_table(rows=1, cols=6)
-            tbl.rows[0].cells[:] = ["單位", "租客", "租金", "水費", "電費", "合計"]
-            for _, r in df_month[df_month["base"]==base].iterrows():
+            hdr = tbl.rows[0].cells
+            for cell, text in zip(hdr, ["單位", "租客", "租金", "水費", "電費", "合計"]):
+                cell.text = text
+
+            for _, r in df_month[df_month["base"] == base].iterrows():
                 c = tbl.add_row().cells
-                c[0].text = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
+                # 劏房顯示 A房 / B房…；整層顯示 6/F
+                unit = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
+                c[0].text = unit
                 c[1].text = r["租客姓名"]
                 c[2].text = f"{r['每月固定租金']:.0f}"
                 c[3].text = f"{r['水費差額']:.0f}"
                 c[4].text = f"{r['電費差額']:.0f}"
-                c[5].text = f"{r['每月固定租金']+r['水費差額']+r['電費差額']:.0f}"
+                c[5].text = f"{r['每月固定租金'] + r['水費差額'] + r['電費差額']:.0f}"
 
-            bio = BytesIO(); doc.save(bio); bio.seek(0)
-            return bio
+            buf = BytesIO()
+            doc.save(buf)
+            buf.seek(0)
+            return buf
         
         st.subheader("📄 產生業主收據")
 
