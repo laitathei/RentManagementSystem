@@ -1098,9 +1098,9 @@ elif main_mode == "📆 租金處理進度":
         if st.button("🚀 生成收據 Word"):
             # 先把 base / is_room 欄位補進 DataFrame（後續函式要用）
             filtered_df[["base","is_room"]] = filtered_df["單位地址"].apply(lambda s: pd.Series(split_address(s)))
-            sel_base = sel_base.replace("/", "")
-            buf = generate_owner_receipt(filtered_df, sel_base, tenant_df)
-            fname = f"{selected_year}年{selected_month}月{sel_base}業主收據.docx"
+            safe_base = sel_base.replace("/", "")
+            buf = generate_owner_receipt(filtered_df, safe_base, tenant_df)
+            fname = f"{selected_year}年{selected_month}月{safe_base}業主收據.docx"
             st.download_button("⬇️ 下載收據", data=buf.getvalue(), file_name=fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 elif main_mode == "🏢 租賃盤源管理":
