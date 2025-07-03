@@ -6,6 +6,8 @@ import pandas as pd
 from datetime import datetime
 import re
 from io import BytesIO
+from docx.shared import Pt
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx import Document
 import pytz
 
@@ -503,10 +505,6 @@ elif main_mode == "📆 租金處理進度":
                             col1.info(f"💧 本月水錶: {float(curr_water_units)}")
                             col2.info(f"💧 上月水錶: {float(prev_water_units)}")
                             col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
-                        else:
-                            col1, col2= st.columns(2)
-                            col1.info(f"💧 fix本月水錶: {curr_water_units}")
-                            col2.info(f"💧 fix上月水錶: {prev_water_units}")
 
                         # ➋ 電錶資訊一行
                         if elec_mode == "per_unit":
@@ -514,10 +512,6 @@ elif main_mode == "📆 租金處理進度":
                             col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                             col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
-                        else:
-                            col1, col2= st.columns(2)
-                            col1.info(f"⚡ fix本月電錶: {curr_elec_units}")
-                            col2.info(f"⚡ fix上月電錶: {prev_elec_units}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
@@ -752,21 +746,13 @@ elif main_mode == "📆 租金處理進度":
                             col1.info(f"💧 本月水錶: {float(curr_water_units)}")
                             col2.info(f"💧 上月水錶: {float(prev_water_units)}")
                             col3.info(f"💧 每度水費: HK$ {float(trow['每度水費'])}")
-                        else:
-                            col1, col2= st.columns(2)
-                            col1.info(f"💧 fix本月水錶: {curr_water_units}")
-                            col2.info(f"💧 fix上月水錶: {prev_water_units}")
-
+                            
                         # ➋ 電錶資訊一行
                         if elec_mode == "per_unit":
                             col4, col5, col6 = st.columns(3)
                             col4.info(f"⚡ 本月電錶: {float(curr_elec_units)}")
                             col5.info(f"⚡ 上月電錶: {float(prev_elec_units)}")
                             col6.info(f"⚡ 每度電費: HK$ {float(trow['每度電費'])}")
-                        else:
-                            col1, col2= st.columns(2)
-                            col1.info(f"⚡ fix本月電錶: {curr_elec_units}")
-                            col2.info(f"⚡ fix上月電錶: {prev_elec_units}")
 
                         # ➌ 金額一行（水費／電費／租金）
                         col7, col8, col9 = st.columns(3)
@@ -940,7 +926,7 @@ elif main_mode == "📆 租金處理進度":
             # 建立「(姓名, 地址) → 租客收費資料」查詢表
             fee_cols = ["租客姓名", "單位地址",
                         "每月固定租金", "每度水費", "固定水費",
-                        "每度電費", "固定電費"]
+                        "每度電費", "固定電費", "收租費"]
             fee_map = (tenant_df[fee_cols]
                     .set_index(["租客姓名", "單位地址"])
                     .applymap(_nz)      # 先把 N/A 轉 0
@@ -948,12 +934,18 @@ elif main_mode == "📆 租金處理進度":
 
             # ===== Word =====
             doc = Document()
-            y = int(df_month["年度"].iloc[0]); m = int(df_month["月份"].iloc[0])
+            doc.styles['Normal'].font.size = Pt(16)  # 設定字體大小
+            doc.styles['Normal'].font.name = 'Microsoft JhengHei'  # 設定字體
             doc.add_heading("業主租金及水電收據", level=1)
-            doc.add_paragraph(f"地址：{base}")
-            doc.add_paragraph(f"月份：{y} 年 {m:02} 月")
-            doc.add_paragraph("")  # 空行
+            doc.paragraphs[-1].alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            p = doc.add_paragraph()
+            p.add_run(f"地址：{base}\n")
+            p.add_run(f"月份：{selected_year} 年 {selected_month} 月\n")
+            
 
+            grand_total = 0.0                 # ② 累加器
+            mgmt_total  = 0.0
+            parts = []
             # 按租客逐一列明
             for _, r in df_month[df_month["base"] == base].iterrows():
                 key = (r["租客姓名"], r["單位地址"])
@@ -961,52 +953,79 @@ elif main_mode == "📆 租金處理進度":
                 rent  = fee.get("每月固定租金", 0)
 
                 # －－ 水費 －－
-                wu_curr = _num(r.get("本月水錶度數", 0))
-                wu_prev = _num(r.get("上月水錶度數", 0))
+                wu_curr = int(_num(r.get("本月水錶度數", 0)))
+                wu_prev = int(_num(r.get("上月水錶度數", 0)))
                 water_units = max(0, wu_curr - wu_prev)
                 water_rate  = fee.get("每度水費", 0)
                 water_fixed = fee.get("固定水費", 0)
 
+                if water_rate > 0:          # ↖ 每度
+                    water_mode = "per_unit"
+                elif water_fixed > 0:       # ↖ 固定
+                    water_mode = "fixed"
+                else:                       # ↖ N/A → 不代收
+                    water_mode = "none"
+
                 if water_rate > 0:
-                    water_fee = water_units * water_rate
-                    water_desc = f"水費為: ({wu_curr}-{wu_prev}) × {water_rate} = {water_fee:.0f}"
+                    water_mode = "per_unit"
+                    water_fee  = water_units * water_rate
                 elif water_fixed > 0:
-                    water_fee = water_fixed
-                    water_desc = f"水費為: 固定水費 = {water_fee:.0f}"
+                    water_mode = "fixed"
+                    water_fee  = water_fixed
                 else:
                     water_fee = 0
-                    water_desc = "水費為: 不代收 (0)"
+                    water_mode = "none"
 
                 # －－ 電費 －－
-                eu_curr = _num(r.get("本月電錶度數", 0))
-                eu_prev = _num(r.get("上月電錶度數", 0))
+                eu_curr = int(_num(r.get("本月電錶度數", 0)))
+                eu_prev = int(_num(r.get("上月電錶度數", 0)))
                 elec_units = max(0, eu_curr - eu_prev)
                 elec_rate  = fee.get("每度電費", 0)
                 elec_fixed = fee.get("固定電費", 0)
 
                 if elec_rate > 0:
-                    elec_fee = elec_units * elec_rate
-                    elec_desc = f"電費為: ({eu_curr}-{eu_prev}) × {elec_rate} = {elec_fee:.0f}"
+                    elec_mode = "per_unit"
+                    elec_fee  = elec_units * elec_rate
                 elif elec_fixed > 0:
-                    elec_fee = elec_fixed
-                    elec_desc = f"電費為: 固定電費 = {elec_fee:.0f}"
+                    elec_mode = "fixed"
+                    elec_fee  = elec_fixed
                 else:
                     elec_fee = 0
-                    elec_desc = "電費為: 不代收 (0)"
+                    elec_mode = "none"
+
+                room_label = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
+                parts.append(f"{room_label}:{total:.0f}")
+                mgmt_fee = fee.get("收租費", 0)       # ← 如果 N/A 已在 _nz 變 0
+                grand_total += total
+                mgmt_total  += mgmt_fee
 
                 total = rent + water_fee + elec_fee
 
                 # －－ 輸出到 Word －－
                 p = doc.add_paragraph()
-                p.add_run(f"租客名稱：{r['租客姓名']}\n").bold = True
+                p.add_run(f"租客名稱：{r['租客姓名']}\n")
                 p.add_run(f"租客地址：{r['單位地址']}\n")
-                p.add_run(water_desc + "\n")
-                p.add_run(elec_desc + "\n")
+                if water_mode == "per_unit":
+                    p.add_run(f"本月水錶度數：{wu_curr}         上月水錶度數：{wu_prev}         每度水費：{water_rate}\n")
+                    p.add_run(f"水費計算： ({wu_curr}-{wu_prev}) × {water_rate} = {water_fee:.0f}\n")
+                elif water_mode == "fixed":
+                    p.add_run(f"水費： {water_fee:.0f}\n")
+
+                if elec_mode == "per_unit":
+                    p.add_run(f"本月電錶度數：{eu_curr}         上月電錶度數：{eu_prev}         每度電費：{elec_rate}\n")
+                    p.add_run(f"電費計算： ({eu_curr}-{eu_prev}) × {elec_rate} = {elec_fee:.0f}\n")
+                elif elec_mode == "fixed":
+                    p.add_run(f"電費： {elec_fee:.0f}\n")
+
                 p.add_run(
-                    f"本月應繳租金為: {rent:.0f} + {water_fee:.0f} + "
-                    f"{elec_fee:.0f} = {total:.0f}\n"
+                    f"本月應繳租金為: {rent} + {water_fee} + {elec_fee} = {total}\n"
                 )
-                doc.add_paragraph("")  # 插入一空行分隔下一位租客
+
+            p_sum = doc.add_paragraph()
+            expr = " + ".join([s.split(":")[1] for s in parts])
+            p_sum.add_run(f"本層租金＋水電合計：{expr} = {grand_total:.0f}\n")
+            p_sum.add_run(f"收租費合計：{mgmt_total:.0f}\n")
+            p_sum.add_run(f"淨實收金額：{grand_total - mgmt_total:.0f}\n")
 
             # ===== 回傳 BytesIO =====
             buf = BytesIO()
@@ -1014,7 +1033,6 @@ elif main_mode == "📆 租金處理進度":
             buf.seek(0)
             return buf
 
-        
         st.subheader("📄 產生業主收據")
 
         if filtered_df.empty:
