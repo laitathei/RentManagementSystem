@@ -872,13 +872,14 @@ elif main_mode == "📆 租金處理進度":
                 st.rerun()
 
     elif sub_mode == "📄 產生業主收據":
-        # ── 判斷「房／座」token ──────────────────────────────
-        PAT_ROOM  = re.compile(r"^(?:[A-Z]|[0-9]+)房$")
-        PAT_WING  = re.compile(r"^[A-Z]座$")
-        PAT_FB    = re.compile(r"^[前後]座$")
+        # ── 判斷「房／座／室」token ──────────────────────────────
+        PAT_ROOM  = re.compile(r"^(?:[A-Z]|[0-9]+)房$")     # A房, 1房
+        PAT_WING  = re.compile(r"^[A-Z]座$")               # A座, B座
+        PAT_FB    = re.compile(r"^[前後]座$")              # 前座, 後座
+        PAT_UNIT  = re.compile(r"^(?:[A-Z]|[0-9]+)室$")     # A室, 1室
 
-        def _is_part(token:str)->bool:
-            return any(p.match(token) for p in (PAT_ROOM, PAT_WING, PAT_FB))
+        def _is_part(token: str) -> bool:
+            return any(p.match(token) for p in (PAT_ROOM, PAT_WING, PAT_FB, PAT_UNIT))
 
         def split_address(addr:str)->tuple[str,bool]:
             """回傳 (base_addr, is_partition)"""
@@ -888,21 +889,35 @@ elif main_mode == "📆 租金處理進度":
                 return head, True           # 劏房
             return addr, False              # 整個單位
 
-        def get_ready_addresses(df:pd.DataFrame)->list[str]:
-            """傳回可產生收據的 base_addr 清單"""
-            df = df.copy()
-            df[["base","is_room"]] = df["單位地址"].apply(
+        def get_ready_addresses(active_df:pd.DataFrame,
+                                rentflow_df:pd.DataFrame)->list[str]:
+            """
+            active_df   = 當月『應交租』的租客   (我們前面已算出來)
+            rentflow_df = 當月租金流程（filtered_df）
+            回傳符合『整層全部已計算水電』的 base_addr 清單
+            """
+            # ① active_df 先標 base / is_room
+            adf = active_df.copy()
+            adf[["base","is_room"]] = adf["單位地址"].apply(
                 lambda s: pd.Series(split_address(s))
             )
-            ready = df[df["已計算水電"].apply(lambda x: str(x).upper() == "TRUE")]                 # 只看已計算
-            full_ready = ready[~ready["is_room"]]["base"].tolist()
 
-            rooms_ready = []
-            for base, grp in ready[ready["is_room"]].groupby("base"):
-                if len(grp) == len(df[df["base"]==base]):     # 全房間都算完
-                    rooms_ready.append(base)
-            return sorted(set(full_ready+rooms_ready))
+            #    每個 base 應該要出現幾間房
+            need_cnt = (adf.groupby("base")
+                        .size()
+                        .rename("need"))
 
+            # ② rentflow_df 只取「已計算水電」＝ TRUE
+            rdf = rentflow_df.copy()
+            rdf = rdf[rdf["已計算水電"].apply(lambda x: str(x).upper()=="TRUE")]
+            rdf[["base","is_room"]] = rdf["單位地址"].apply(
+                lambda s: pd.Series(split_address(s))
+            )
+            ready_cnt = (rdf.groupby("base").size().rename("ready"))
+            check = (need_cnt.to_frame().join(ready_cnt, how="left").fillna(0).astype(int))
+            ok_list = check[check["need"] == check["ready"]].index.tolist()
+            return sorted(ok_list)
+        
         def generate_owner_receipt(df_month:pd.DataFrame, base:str)->BytesIO:
             """把同 base 的全部房/戶生成 Word，回傳 BytesIO"""
             doc = Document()
@@ -931,7 +946,7 @@ elif main_mode == "📆 租金處理進度":
             st.info(f"目前沒有 {selected_year} 年 {selected_month} 月的租金紀錄")
 
         # 利用工具函式挑可出單的地址
-        addr_opts = get_ready_addresses(filtered_df)
+        addr_opts = get_ready_addresses(active_df, filtered_df)
         if not addr_opts:
             st.info("⚠️ 仍有房間未計算水電，暫不能產生收據")
             st.stop()
