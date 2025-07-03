@@ -924,7 +924,16 @@ elif main_mode == "📆 租金處理進度":
             """依樓層(base) 產生詳細業主收據 Word 並回傳 BytesIO"""
 
             # ===== 小工具 =====
-            _num = lambda v: 0.0 if v is None else _num(v)
+            def _num(v):
+                try:
+                    if v is None:
+                        return 0.0
+                    s = str(v).strip()
+                    if s.upper() in ("N/A", ""):
+                        return 0.0
+                    return float(s)
+                except Exception:
+                    return 0.0
             def _nz(v):
                 return 0.0 if str(v).upper() in ("N/A", "", "NONE") else float(v)
 
