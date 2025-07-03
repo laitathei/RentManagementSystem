@@ -993,13 +993,12 @@ elif main_mode == "📆 租金處理進度":
                     elec_fee = 0
                     elec_mode = "none"
 
+                total = rent + water_fee + elec_fee
                 room_label = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
                 parts.append(f"{room_label}:{total:.0f}")
                 mgmt_fee = fee.get("收租費", 0)       # ← 如果 N/A 已在 _nz 變 0
                 grand_total += total
                 mgmt_total  += mgmt_fee
-
-                total = rent + water_fee + elec_fee
 
                 # －－ 輸出到 Word －－
                 p = doc.add_paragraph()
