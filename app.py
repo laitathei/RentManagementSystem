@@ -894,7 +894,7 @@ elif main_mode == "📆 租金處理進度":
             df[["base","is_room"]] = df["單位地址"].apply(
                 lambda s: pd.Series(split_address(s))
             )
-            ready = df[df["已計算水電"]==True]                 # 只看已計算
+            ready = df[df["已計算水電"].apply(lambda x: str(x).upper() == "TRUE")]                 # 只看已計算
             full_ready = ready[~ready["is_room"]]["base"].tolist()
 
             rooms_ready = []
@@ -928,7 +928,7 @@ elif main_mode == "📆 租金處理進度":
         st.subheader("📄 產生業主收據")
 
         if filtered_df.empty:
-            st.info(f"目前沒有 {selected_year} 年 {selected_month} 月的紀錄可修改")
+            st.info(f"目前沒有 {selected_year} 年 {selected_month} 月的租金紀錄")
 
         # 利用工具函式挑可出單的地址
         addr_opts = get_ready_addresses(filtered_df)
