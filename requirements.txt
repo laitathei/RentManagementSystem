@@ -3,4 +3,4 @@ gspread
 oauth2client
 pandas
 pytz
-numpy
+python-docx

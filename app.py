@@ -4,7 +4,9 @@ from oauth2client.service_account import ServiceAccountCredentials
 from decimal import Decimal, ROUND_HALF_UP
 import pandas as pd
 from datetime import datetime
-import numpy as np
+import re
+from io import BytesIO
+from docx import Document
 import pytz
 
 # ────────────────── 🔒 密碼登入驗證 ──────────────────
@@ -374,7 +376,7 @@ elif main_mode == "📆 租金處理進度":
         cols = [c for c in ["租客姓名", "租客電話", "單位地址", "收租金額", "收取租金日期"] if c in undeposited_df.columns]
         st.data_editor(undeposited_df[cols], use_container_width=True, disabled=True)
 
-    sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄"], horizontal=True)
+    sub_mode = st.radio("🧾 租金紀錄操作", ["➕ 新增租金紀錄", "✏️ 更改租金紀錄", "🗑️ 刪除租金紀錄", "📄 產生業主收據"], horizontal=True)
     if sub_mode == "➕ 新增租金紀錄":
         st.subheader("➕ 新增租金紀錄")
 
@@ -868,6 +870,80 @@ elif main_mode == "📆 租金處理進度":
                 sheet_rentflow.delete_rows(sheet_row)
                 st.warning(f"✅ 已刪除：{choice}")
                 st.rerun()
+
+    elif sub_mode == "📄 產生業主收據":
+        # ── 判斷「房／座」token ──────────────────────────────
+        PAT_ROOM  = re.compile(r"^(?:[A-Z]|[0-9]+)房$")
+        PAT_WING  = re.compile(r"^[A-Z]座$")
+        PAT_FB    = re.compile(r"^[前後]座$")
+
+        def _is_part(token:str)->bool:
+            return any(p.match(token) for p in (PAT_ROOM, PAT_WING, PAT_FB))
+
+        def split_address(addr:str)->tuple[str,bool]:
+            """回傳 (base_addr, is_partition)"""
+            addr = re.sub(r"\s+", " ", addr.strip())
+            head, sep, tail = addr.rpartition(" ")
+            if sep and _is_part(tail):
+                return head, True           # 劏房
+            return addr, False              # 整個單位
+
+        def get_ready_addresses(df:pd.DataFrame)->list[str]:
+            """傳回可產生收據的 base_addr 清單"""
+            df = df.copy()
+            df[["base","is_room"]] = df["單位地址"].apply(
+                lambda s: pd.Series(split_address(s))
+            )
+            ready = df[df["已計算水電"]==True]                 # 只看已計算
+            full_ready = ready[~ready["is_room"]]["base"].tolist()
+
+            rooms_ready = []
+            for base, grp in ready[ready["is_room"]].groupby("base"):
+                if len(grp) == len(df[df["base"]==base]):     # 全房間都算完
+                    rooms_ready.append(base)
+            return sorted(set(full_ready+rooms_ready))
+
+        def generate_owner_receipt(df_month:pd.DataFrame, base:str)->BytesIO:
+            """把同 base 的全部房/戶生成 Word，回傳 BytesIO"""
+            doc = Document()
+            y = int(df_month["年度"].iloc[0]); m = int(df_month["月份"].iloc[0])
+            doc.add_heading("業主租金及水電收據", level=1)
+            doc.add_paragraph(f"地址：{base}")
+            doc.add_paragraph(f"月份：{y} 年 {m:02} 月")
+
+            tbl = doc.add_table(rows=1, cols=6)
+            tbl.rows[0].cells[:] = ["單位", "租客", "租金", "水費", "電費", "合計"]
+            for _, r in df_month[df_month["base"]==base].iterrows():
+                c = tbl.add_row().cells
+                c[0].text = r["單位地址"].split()[-1] if r["is_room"] else r["單位地址"].split("/")[-1]
+                c[1].text = r["租客姓名"]
+                c[2].text = f"{r['每月固定租金']:.0f}"
+                c[3].text = f"{r['水費差額']:.0f}"
+                c[4].text = f"{r['電費差額']:.0f}"
+                c[5].text = f"{r['每月固定租金']+r['水費差額']+r['電費差額']:.0f}"
+
+            bio = BytesIO(); doc.save(bio); bio.seek(0)
+            return bio
+        
+        st.subheader("📄 產生業主收據")
+
+        if filtered_df.empty:
+            st.info(f"目前沒有 {selected_year} 年 {selected_month} 月的紀錄可修改")
+
+        # 利用工具函式挑可出單的地址
+        addr_opts = get_ready_addresses(filtered_df)
+        if not addr_opts:
+            st.info("⚠️ 仍有房間未計算水電，暫不能產生收據")
+            st.stop()
+
+        sel_base = st.selectbox("選擇地址", addr_opts)
+
+        if st.button("🚀 生成收據 Word"):
+            # 先把 base / is_room 欄位補進 DataFrame（後續函式要用）
+            filtered_df[["base","is_room"]] = filtered_df["單位地址"].apply(lambda s: pd.Series(split_address(s)))
+            buf = generate_owner_receipt(filtered_df, sel_base)
+            fname = f"{selected_year}年{selected_month}月{sel_base}業主收據.docx"
+            st.download_button("⬇️ 下載收據", data=buf.getvalue(), file_name=fname, mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 
 elif main_mode == "🏢 租賃盤源管理":
     st.markdown("### 🔍 查詢間隔類型的盤源")
