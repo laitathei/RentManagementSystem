@@ -696,7 +696,7 @@ elif main_mode == "📆 租金處理進度":
                     elif water_mode == "fixed":
                         curr_water_units = "N/A"
                         prev_water_units = "N/A"
-                        water_fee = float(row_data["本月水錶度數"])
+                        water_fee = float(trow["固定水費"])
                         water_units = "N/A"
                     else:
                         curr_water_units = "N/A"
@@ -712,7 +712,7 @@ elif main_mode == "📆 租金處理進度":
                     elif elec_mode == "fixed":
                         curr_elec_units = "N/A"
                         prev_elec_units = "N/A"
-                        elec_fee = float(row_data["本月電錶度數"])
+                        elec_fee = float(trow["固定電費"])
                         elec_units = "N/A"
                     else:
                         curr_elec_units = "N/A"
