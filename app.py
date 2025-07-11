@@ -1056,13 +1056,13 @@ elif main_mode == "📆 租金處理進度":
                 p.add_run(f"租客地址：{r['單位地址']}\n")
                 if water_mode == "per_unit":
                     p.add_run(f"本月水錶度數：{wu_curr}         上月水錶度數：{wu_prev}         每度水費：{water_rate}\n")
-                    p.add_run(f"水費計算： ({wu_curr}-{wu_prev}) × {water_rate} = {water_fee:.0f}\n")
+                    p.add_run(f"水費計算： ({wu_curr}-{wu_prev}) = {wu_curr-wu_prev} × {water_rate} = {water_fee:.0f}\n")
                 elif water_mode == "fixed":
                     p.add_run(f"水費： {water_fee:.0f}\n")
 
                 if elec_mode == "per_unit":
                     p.add_run(f"本月電錶度數：{eu_curr}         上月電錶度數：{eu_prev}         每度電費：{elec_rate}\n")
-                    p.add_run(f"電費計算： ({eu_curr}-{eu_prev}) × {elec_rate} = {elec_fee:.0f}\n")
+                    p.add_run(f"電費計算： ({eu_curr}-{eu_prev}) = {eu_curr-eu_prev} × {elec_rate} = {elec_fee:.0f}\n")
                 elif elec_mode == "fixed":
                     p.add_run(f"電費： {elec_fee:.0f}\n")
 
